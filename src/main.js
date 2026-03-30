@@ -24,7 +24,7 @@ const camera = new pc.Entity('camera');
 camera.addComponent('camera', {
     clearColor: new pc.Color(0.05, 0.05, 0.08)
 });
-camera.setLocalPosition(0, 2, 6);
+camera.setLocalPosition(0, 0, 15);
 camera.lookAt(0, 0, 0);
 root.addChild(camera);
 
@@ -61,8 +61,8 @@ app.assets.loadFromUrl('assets/UR5e.glb', 'container', (err, asset) => {
 
     // UR5e models can be huge or tiny depending on export. 
     // We'll normalize scale to fit the view.
-    mainObject.setLocalScale(1, 1, 1); 
-    mainObject.setLocalPosition(0, -1, 0); // Offset to sit on "floor"
+    mainObject.setLocalScale(5, 5, 5); 
+    mainObject.setLocalPosition(0, 0, 0); // Reset to origin to find the center
     
     root.addChild(mainObject);
 });
