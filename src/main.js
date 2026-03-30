@@ -98,8 +98,9 @@ function createHotspot(data) {
     pinMat.update();
     pin.model.meshInstances[0].material = pinMat;
 
-    // Store data in the entity for easy access
+    // Store data in the entity and meshInstance for picking access
     pin.hotspotData = data;
+    pin.model.meshInstances[0].hotspotData = data;
     
     root.addChild(pin);
     hotspotsEntities.push(pin);
@@ -135,46 +136,88 @@ function showHotspotInfo(data) {
     });
 }
 
-// --- INTERACTION ---
+// --- INTERACTION & ROTATION ---
 
 let picker = null;
+let hoveredMesh = null;
+const originalEmissives = new Map();
+
+let isDragging = false;
+let lastMousePos = { x: 0, y: 0 };
+let targetRotation = { x: 0, y: 0 };
+let currentRotation = { x: 0, y: 0 };
+const ROTATION_SENSITIVITY = 0.25;
+const SMOOTHING = 0.15;
+
+function highlightMesh(meshInstance) {
+    if (hoveredMesh === meshInstance) return;
+
+    // Reset previous
+    if (hoveredMesh) {
+        const original = originalEmissives.get(hoveredMesh);
+        if (original) {
+            hoveredMesh.material.emissive.copy(original);
+            hoveredMesh.material.update();
+        }
+    }
+
+    hoveredMesh = meshInstance;
+
+    // Highlight new
+    if (hoveredMesh) {
+        if (!originalEmissives.has(hoveredMesh)) {
+            originalEmissives.set(hoveredMesh, hoveredMesh.material.emissive.clone());
+        }
+        hoveredMesh.material.emissive.set(0.3, 0.4, 0.8);
+        hoveredMesh.material.update();
+        canvas.style.cursor = 'pointer';
+    } else {
+        canvas.style.cursor = isDragging ? 'grabbing' : 'default';
+    }
+}
 
 window.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
-
-    if (!picker && app.graphicsDevice) {
-        picker = new pc.Picker(app, canvas.clientWidth, canvas.clientHeight);
-    }
-
-    // Pick from camera
-    const x = e.clientX;
-    const y = e.clientY;
+    isDragging = true;
+    lastMousePos = { x: e.clientX, y: e.clientY };
+    canvas.style.cursor = 'grabbing';
     
-    // Simple raycast against hotspots
-    const from = camera.camera.screenToWorld(x, y, camera.camera.nearClip);
-    const to = camera.camera.screenToWorld(x, y, camera.camera.farClip);
-    
-    const result = app.systems.rigidbody ? app.systems.rigidbody.raycastFirst(from, to) : null;
-    
-    // Fallback: check distance to hotspots (since we aren't using physics/collision components)
-    let closest = null;
-    let minDist = 0.5; // Threshold for clicking a small pin
-
-    hotspotsEntities.forEach(pin => {
-        const pinPos = pin.getPosition();
-        const dist = distToSegment(pinPos, from, to);
-        if (dist < minDist) {
-            minDist = dist;
-            closest = pin;
-        }
-    });
-
-    if (closest) {
-        showHotspotInfo(closest.hotspotData);
+    if (hoveredMesh && hoveredMesh.hotspotData) {
+        showHotspotInfo(hoveredMesh.hotspotData);
     }
 });
 
-// Helper for distance between point and ray
+window.addEventListener('mousemove', (e) => {
+    if (!app.graphicsDevice || !mainObject) return;
+
+    if (isDragging) {
+        const dx = e.clientX - lastMousePos.x;
+        const dy = e.clientY - lastMousePos.y;
+        targetRotation.y += dx * ROTATION_SENSITIVITY;
+        targetRotation.x += dy * ROTATION_SENSITIVITY;
+        lastMousePos = { x: e.clientX, y: e.clientY };
+    }
+
+    if (!picker) {
+        picker = new pc.Picker(app, canvas.clientWidth, canvas.clientHeight);
+    }
+
+    // Update picking
+    picker.prepare(camera.camera, app.scene);
+    const selection = picker.getSelection(e.clientX, e.clientY);
+    if (selection.length > 0) {
+        highlightMesh(selection[0]);
+    } else {
+        highlightMesh(null);
+    }
+});
+
+window.addEventListener('mouseup', () => {
+    isDragging = false;
+    canvas.style.cursor = hoveredMesh ? 'pointer' : 'default';
+});
+
+// Helper for distance between point and ray (for legacy hotspot picking if needed)
 function distToSegment(p, v, w) {
     const l2 = v.distanceSq(w);
     if (l2 === 0) return p.distance(v);
@@ -186,7 +229,15 @@ function distToSegment(p, v, w) {
 
 app.on('update', (dt) => {
     if (mainObject) {
-        mainObject.rotate(0, 5 * dt, 0);
+        // Smooth rotation interpolation
+        currentRotation.x += (targetRotation.x - currentRotation.x) * SMOOTHING;
+        currentRotation.y += (targetRotation.y - currentRotation.y) * SMOOTHING;
+        mainObject.setLocalEulerAngles(currentRotation.x, currentRotation.y, 0);
+        
+        // Slight auto-idle if not dragging
+        if (!isDragging) {
+            targetRotation.y += 5 * dt;
+        }
     }
     
     // Make hotspots pulsate
