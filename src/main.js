@@ -34,23 +34,46 @@ light.addComponent('light', { type: 'directional', color: new pc.Color(1, 1, 1),
 light.setLocalEulerAngles(45, 30, 0);
 root.addChild(light);
 
-app.scene.ambientLight = new pc.Color(0.1, 0.1, 0.15);
+app.scene.ambientLight = new pc.Color(0.2, 0.2, 0.25);
 
-// 3. Main Scanned Object (A Torus Knot as a placeholder for a complex part)
-const mainObject = new pc.Entity('scannedObject');
-mainObject.addComponent('model', { type: 'torus' });
-mainObject.setLocalScale(1.5, 1.5, 1.5);
+// --- ASSET LOADING (UR5e.glb) ---
+const loaderBar = document.getElementById('loader-bar');
+const modelLoader = document.getElementById('model-loader');
 
-const scanMaterial = new pc.StandardMaterial();
-scanMaterial.diffuse = new pc.Color(0.2, 0.2, 0.3);
-scanMaterial.emissive = new pc.Color(0.1, 0.1, 0.2);
-scanMaterial.specular = new pc.Color(1, 1, 1);
-scanMaterial.shininess = 80;
-scanMaterial.useLighting = true;
-scanMaterial.update();
-mainObject.model.meshInstances[0].material = scanMaterial;
+let mainObject = null;
 
-root.addChild(mainObject);
+// Use GLB loader to handle the .glb file
+app.assets.loadFromUrl('assets/UR5e.glb', 'container', (err, asset) => {
+    if (err) {
+        console.error('Error loading UR5e.glb:', err);
+        return;
+    }
+
+    // Hide loader
+    modelLoader.style.display = 'none';
+
+    // Create entity from the loaded GLB container
+    mainObject = new pc.Entity('UR5e');
+    mainObject.addComponent('model', {
+        type: 'asset',
+        asset: asset.resource.model
+    });
+
+    // UR5e models can be huge or tiny depending on export. 
+    // We'll normalize scale to fit the view.
+    mainObject.setLocalScale(1, 1, 1); 
+    mainObject.setLocalPosition(0, -1, 0); // Offset to sit on "floor"
+    
+    root.addChild(mainObject);
+});
+
+// Helper for UI progress (simulated for immediate local loading)
+let progress = 0;
+const interval = setInterval(() => {
+    progress += 10;
+    if (loaderBar) loaderBar.style.width = progress + '%';
+    if (progress >= 100) clearInterval(interval);
+}, 50);
 
 // --- HOTSPOTS LOGIC ---
 
@@ -114,10 +137,14 @@ function showHotspotInfo(data) {
 
 // --- INTERACTION ---
 
-const picker = new pc.Picker(app.graphicsDevice, 1024, 1024);
+let picker = null;
 
 window.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
+
+    if (!picker && app.graphicsDevice) {
+        picker = new pc.Picker(app, canvas.clientWidth, canvas.clientHeight);
+    }
 
     // Pick from camera
     const x = e.clientX;
@@ -158,7 +185,9 @@ function distToSegment(p, v, w) {
 }
 
 app.on('update', (dt) => {
-    mainObject.rotate(0, 5 * dt, 0);
+    if (mainObject) {
+        mainObject.rotate(0, 5 * dt, 0);
+    }
     
     // Make hotspots pulsate
     const s = 1 + Math.sin(app.time * 4) * 0.1;

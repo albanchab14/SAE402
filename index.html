@@ -109,6 +109,14 @@
         <div class="status-badge">Mode Scan Actif</div>
     </div>
 
+    <!-- Loader -->
+    <div id="model-loader" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; font-size: 14px; color: rgba(255, 255, 255, 0.5); z-index: 50;">
+        Chargement du modèle UR5e...<br>
+        <div id="loader-progress" style="width: 200px; height: 2px; background: rgba(255, 255, 255, 0.1); margin-top: 10px; border-radius: 2px;">
+            <div id="loader-bar" style="width: 0%; height: 100%; background: #6366f1; transition: width 0.3s; border-radius: 2px;"></div>
+        </div>
+    </div>
+
     <!-- Info Tab (Hidden by default) -->
     <div id="info-tab">
         <div class="close-btn" onclick="document.getElementById('info-tab').classList.remove('active')">✕</div>
