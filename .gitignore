@@ -1,0 +1,27 @@
+# Node Dependencies
+node_modules/
+dist/
+dist-ssr
+*.local
+
+# Environment Variables (CRITICAL: Do NOT remove!)
+.env
+.env.local
+.env.*.local
+config.local.php
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# XAMPP related
+api/config.php

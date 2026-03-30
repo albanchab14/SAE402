@@ -1,0 +1,24 @@
+{
+  "name": "saedev2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.html",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/albanchab14/SAE402.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "homepage": "https://github.com/albanchab14/SAE402#readme",
+  "dependencies": {
+    "playcanvas": "^2.17.2",
+    "vite": "^8.0.3"
+  }
+}
