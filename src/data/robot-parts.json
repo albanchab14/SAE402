@@ -1,0 +1,180 @@
+{
+  "robot": {
+    "model": "Universal Robots UR5e",
+    "series": "e-Series",
+    "payload_kg": 5,
+    "reach_mm": 850,
+    "axes": 6,
+    "repeatability_mm": 0.03,
+    "tcp_speed_ms": 1,
+    "mass_kg": 20.6,
+    "protection_arm": "IP54",
+    "protection_box": "IP44",
+    "noise_dba": 65,
+    "power_typical_w": 200,
+    "power_max_w": 570,
+    "voltage": "100-240 VAC",
+    "frequency": "47-440 Hz",
+    "temperature_range": "0-50°C"
+  },
+  "parts": [
+    {
+      "id": 1,
+      "name": "Base",
+      "name_fr": "Base",
+      "mesh_name": "Base",
+      "category": "identification",
+      "description": "Socle fixe du robot, point d'ancrage au sol ou à la surface de montage. Contient le moteur du Joint 1 et les LEDs de statut.",
+      "specs": {
+        "diametre": "149 mm",
+        "fixation": "4x M6",
+        "montage": "Toute orientation (sol, mur, plafond)",
+        "led_status": "Anneau LED indiquant l'état du robot",
+        "joint": "J1 - Rotation base",
+        "plage": "±360°",
+        "vitesse_max": "180°/s"
+      },
+      "hotspot": { "x": 0, "y": 0.05, "z": 0 }
+    },
+    {
+      "id": 2,
+      "name": "Shoulder",
+      "name_fr": "Épaule",
+      "mesh_name": "Shoulder",
+      "category": "identification",
+      "description": "Première articulation majeure (Joint 2). Relie la base au bras supérieur. Moteur brushless avec réducteur harmonique.",
+      "specs": {
+        "joint": "J2 - Épaule",
+        "plage": "±360°",
+        "vitesse_max": "180°/s",
+        "moteur": "Brushless DC + réducteur harmonique",
+        "couple_nominal": "Élevé (charge structurelle principale)"
+      },
+      "hotspot": { "x": 0, "y": 0.35, "z": 0 }
+    },
+    {
+      "id": 3,
+      "name": "Upper Arm",
+      "name_fr": "Bras supérieur",
+      "mesh_name": "UpperArm",
+      "category": "identification",
+      "description": "Segment le plus long du bras robotique (425 mm). Relie l'épaule au coude.",
+      "specs": {
+        "longueur": "425 mm",
+        "joint": "J2-J3",
+        "plage": "±360°",
+        "vitesse_max": "180°/s",
+        "materiau": "Aluminium haute résistance"
+      },
+      "hotspot": { "x": 0, "y": 0.7, "z": -0.15 }
+    },
+    {
+      "id": 4,
+      "name": "Elbow",
+      "name_fr": "Coude",
+      "mesh_name": "Elbow",
+      "category": "identification",
+      "description": "Articulation intermédiaire (Joint 3). Permet la flexion/extension du bras.",
+      "specs": {
+        "joint": "J3 - Coude",
+        "plage": "±360°",
+        "vitesse_max": "180°/s",
+        "moteur": "Brushless DC + réducteur harmonique"
+      },
+      "hotspot": { "x": 0, "y": 1.05, "z": -0.1 }
+    },
+    {
+      "id": 5,
+      "name": "Wrist 1",
+      "name_fr": "Poignet 1 (Avant-bras)",
+      "mesh_name": "Wrist1",
+      "category": "identification",
+      "description": "Premier axe du poignet (Joint 4). Assure la rotation de l'avant-bras.",
+      "specs": {
+        "joint": "J4 - Poignet 1",
+        "plage": "±360°",
+        "vitesse_max": "180°/s",
+        "taille": "Size 0"
+      },
+      "hotspot": { "x": 0, "y": 1.15, "z": 0.1 }
+    },
+    {
+      "id": 6,
+      "name": "Wrist 2",
+      "name_fr": "Poignet 2",
+      "mesh_name": "Wrist2",
+      "category": "identification",
+      "description": "Deuxième axe du poignet (Joint 5). Permet l'inclinaison du poignet.",
+      "specs": {
+        "joint": "J5 - Poignet 2",
+        "plage": "±360°",
+        "vitesse_max": "180°/s",
+        "reference": "124101"
+      },
+      "hotspot": { "x": 0, "y": 1.25, "z": 0.15 }
+    },
+    {
+      "id": 7,
+      "name": "Tool Flange",
+      "name_fr": "Bride outil",
+      "mesh_name": "ToolFlange",
+      "category": "identification",
+      "description": "Interface de montage d'outil (Joint 6). Intègre un capteur Force/Couple 6 axes et un connecteur M8 8-pin.",
+      "specs": {
+        "joint": "J6 - Bride outil",
+        "plage": "±360°",
+        "vitesse_max": "180°/s",
+        "norme_montage": "ISO 9409-1-50-4-M6",
+        "capteur_ft": "Force ±50N (±3.5N), Couple ±10Nm (±0.2Nm)",
+        "connecteur": "M8 8-pin",
+        "reference": "102414"
+      },
+      "hotspot": { "x": 0, "y": 1.35, "z": 0.2 }
+    },
+    {
+      "id": 8,
+      "name": "Control Box",
+      "name_fr": "Boîtier de commande",
+      "mesh_name": "ControlBox",
+      "category": "alimentation",
+      "description": "Unité de contrôle principale du robot. Contient l'alimentation, les cartes de contrôle, et les interfaces de communication.",
+      "specs": {
+        "dimensions": "460 × 449 × 254 mm",
+        "masse": "12 kg",
+        "protection": "IP44",
+        "alimentation": "100-240 VAC, 47-440 Hz",
+        "io_digitales": "16 DI + 16 DO",
+        "io_analogiques": "2 AI + 2 AO",
+        "protocoles": "Modbus TCP, Ethernet/IP, PROFINET, ROS/ROS2",
+        "consommation_typique": "200 W",
+        "consommation_max": "570 W"
+      },
+      "hotspot": { "x": 0.8, "y": 0.2, "z": 0.5 }
+    },
+    {
+      "id": 9,
+      "name": "Teach Pendant",
+      "name_fr": "Teach Pendant",
+      "mesh_name": "TeachPendant",
+      "category": "installation",
+      "description": "Tablette de programmation du robot. Interface tactile pour la programmation, le contrôle manuel et la configuration.",
+      "specs": {
+        "ecran": "12 pouces, 1280 × 800 px",
+        "dimensions": "300 × 231 × 50 mm",
+        "masse": "1.8 kg",
+        "protection": "IP54",
+        "cable": "4.5 m",
+        "interface": "Tactile capacitif"
+      },
+      "hotspot": { "x": -0.8, "y": 0.2, "z": 0.5 }
+    }
+  ],
+  "categories": {
+    "identification": { "label": "Identification", "icon": "🔍" },
+    "alimentation": { "label": "Alimentation", "icon": "⚡" },
+    "raccordement": { "label": "Raccordement", "icon": "🔌" },
+    "installation": { "label": "Installation", "icon": "🔧" },
+    "maintenance": { "label": "Maintenance", "icon": "🛠️" },
+    "pieces_detachees": { "label": "Pièces détachées", "icon": "📦" }
+  }
+}

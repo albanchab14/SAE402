@@ -3,129 +3,373 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAE402 - PlayCanvas Project</title>
+    <title>MARA - Maintenance AR | UR5e</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            margin: 0;
-            padding: 0;
             overflow: hidden;
-            background-color: #1a1a1a;
+            background: #0a0a0f;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            color: #ffffff;
+            color: #fff;
         }
-        #application-container {
-            width: 100vw;
-            height: 100vh;
+
+        /* === CANVAS === */
+        #application-container { width: 100vw; height: 100vh; position: relative; }
+        #application-canvas { width: 100%; height: 100%; display: block; }
+
+        /* === LOADING SCREEN === */
+        #loading-screen {
+            position: fixed; inset: 0; z-index: 9999;
+            background: #0a0a0f;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: opacity 0.6s;
         }
-        #ui-overlay {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            pointer-events: none;
-            z-index: 10;
-        }
-        h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 300;
-            letter-spacing: 2px;
+        #loading-screen.fade-out { opacity: 0; pointer-events: none; }
+        .loading-logo {
+            font-size: 32px; font-weight: 200; letter-spacing: 6px;
             text-transform: uppercase;
+            background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 40px;
+        }
+        .loading-bar-track {
+            width: 240px; height: 3px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 3px; overflow: hidden;
+        }
+        .loading-bar-fill {
+            height: 100%; width: 0%;
             background: linear-gradient(90deg, #6366f1, #a855f7);
-            -webkit-background-clip: text;
-            background-clip: text;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+        #loading-status {
+            margin-top: 16px; font-size: 13px;
+            color: rgba(255,255,255,0.4);
+            letter-spacing: 1px;
+        }
+
+        /* === TOP OVERLAY === */
+        #ui-overlay {
+            position: absolute; top: 20px; left: 20px;
+            pointer-events: none; z-index: 10;
+        }
+        #ui-overlay h1 {
+            font-size: 20px; font-weight: 300;
+            letter-spacing: 3px; text-transform: uppercase;
+            background: linear-gradient(90deg, #6366f1, #a855f7);
+            -webkit-background-clip: text; background-clip: text;
             -webkit-text-fill-color: transparent;
         }
         .status-badge {
-            display: inline-block;
-            margin-top: 10px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            font-size: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: inline-block; margin-top: 8px;
+            padding: 3px 10px; border-radius: 20px;
+            background: rgba(255,255,255,0.06);
+            backdrop-filter: blur(8px);
+            font-size: 11px; letter-spacing: 0.5px;
+            border: 1px solid rgba(255,255,255,0.08);
         }
+
+        /* === DEBUG PANEL === */
         #debug-panel {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(10px);
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 13px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            min-width: 200px;
+            position: absolute; bottom: 20px; right: 20px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(12px);
+            padding: 14px 18px; border-radius: 12px;
+            font-size: 12px;
+            border: 1px solid rgba(255,255,255,0.06);
+            z-index: 10;
         }
-        /* Info Tab Style */
-        #info-tab {
-            position: absolute;
-            top: 50%;
-            left: 20px;
-            transform: translateY(-50%) translateX(-120%);
-            width: 300px;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        #debug-panel strong { color: rgba(255,255,255,0.5); font-weight: 500; }
+        #db-status-text { color: #f59e0b; }
+
+        /* === INFO PANEL === */
+        #info-panel {
+            position: absolute; top: 50%; left: 0;
+            transform: translateY(-50%) translateX(-110%);
+            width: 340px; max-height: 80vh;
+            background: rgba(12,12,20,0.92);
+            backdrop-filter: blur(24px);
+            border-radius: 0 20px 20px 0;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-left: none;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
             transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
             z-index: 100;
+            overflow: hidden;
+            display: flex; flex-direction: column;
         }
-        #info-tab.active {
-            transform: translateY(-50%) translateX(0);
+        #info-panel.active { transform: translateY(-50%) translateX(0); }
+
+        .info-header {
+            padding: 24px 24px 16px; position: relative;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
         }
-        .info-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #6366f1;
+        .info-close {
+            position: absolute; top: 16px; right: 18px;
+            font-size: 22px; cursor: pointer; opacity: 0.4;
+            transition: opacity 0.2s; line-height: 1;
         }
-        .info-body {
-            font-size: 14px;
-            line-height: 1.6;
-            color: rgba(255, 255, 255, 0.8);
+        .info-close:hover { opacity: 1; }
+        .info-category {
+            font-size: 10px; text-transform: uppercase;
+            letter-spacing: 2px; color: #a855f7;
+            margin-bottom: 6px;
         }
-        .close-btn {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            cursor: pointer;
-            opacity: 0.5;
-            transition: opacity 0.3s;
+        .info-title { font-size: 18px; font-weight: 600; color: #fff; }
+        .info-subtitle { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+        .info-tabs {
+            display: flex; padding: 0 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
         }
-        .close-btn:hover {
-            opacity: 1;
+        .info-tab {
+            flex: 1; padding: 10px 4px;
+            background: none; border: none; color: rgba(255,255,255,0.4);
+            font-size: 11px; cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s; text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .db-status {
-            color: #10b981;
+        .info-tab:hover { color: rgba(255,255,255,0.7); }
+        .info-tab.active { color: #a855f7; border-bottom-color: #a855f7; }
+
+        .info-content {
+            padding: 20px 24px; flex: 1;
+            overflow-y: auto; font-size: 13px;
+            line-height: 1.7; color: rgba(255,255,255,0.75);
+        }
+        .info-content::-webkit-scrollbar { width: 4px; }
+        .info-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        .info-description { margin-bottom: 16px; }
+        .info-image { width: 100%; border-radius: 8px; margin-top: 12px; }
+        .info-empty { color: rgba(255,255,255,0.3); text-align: center; padding: 20px 0; }
+
+        .specs-table { width: 100%; border-collapse: collapse; }
+        .specs-table tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .spec-key {
+            padding: 8px 8px 8px 0; color: rgba(255,255,255,0.4);
+            font-size: 12px; white-space: nowrap; vertical-align: top;
+        }
+        .spec-val { padding: 8px 0; color: #fff; font-size: 12px; }
+
+        .doc-card {
+            background: rgba(255,255,255,0.03); border-radius: 10px;
+            padding: 14px; margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .doc-type {
+            display: inline-block; font-size: 9px; padding: 2px 6px;
+            background: rgba(99,102,241,0.2); color: #818cf8;
+            border-radius: 4px; margin-bottom: 6px;
+            letter-spacing: 1px;
+        }
+        .doc-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+        .doc-content { font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5; }
+        .doc-link {
+            display: inline-block; margin-top: 8px;
+            color: #818cf8; text-decoration: none;
+            font-size: 12px;
+        }
+        .doc-link:hover { text-decoration: underline; }
+
+        .maintenance-info h4 {
+            font-size: 13px; font-weight: 500; color: #a855f7;
+            margin: 14px 0 8px;
+        }
+        .maintenance-info h4:first-child { margin-top: 0; }
+        .maintenance-info ul { padding-left: 18px; }
+        .maintenance-info li { margin-bottom: 4px; font-size: 12px; color: rgba(255,255,255,0.6); }
+
+        .info-ai-btn {
+            margin: 16px 24px 20px;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            border: none; border-radius: 10px;
+            color: #fff; font-size: 13px; font-weight: 500;
+            cursor: pointer; transition: opacity 0.2s;
+        }
+        .info-ai-btn:hover { opacity: 0.85; }
+        .ai-icon { margin-right: 6px; }
+
+        /* === CHAT PANEL === */
+        #chat-toggle {
+            position: absolute; bottom: 24px; left: 24px;
+            width: 52px; height: 52px; border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            border: none; color: #fff;
+            font-size: 22px; cursor: pointer;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.4);
+            z-index: 100; display: flex;
+            align-items: center; justify-content: center;
+            transition: transform 0.2s, opacity 0.3s;
+        }
+        #chat-toggle:hover { transform: scale(1.08); }
+        #chat-toggle.hidden { opacity: 0; pointer-events: none; }
+
+        #chat-panel {
+            position: absolute; bottom: 20px; left: 20px;
+            width: 360px; max-height: 500px;
+            background: rgba(12,12,20,0.95);
+            backdrop-filter: blur(24px);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            z-index: 200;
+            display: flex; flex-direction: column;
+            transform: translateY(20px); opacity: 0;
+            pointer-events: none;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+        }
+        #chat-panel.active {
+            transform: translateY(0); opacity: 1; pointer-events: all;
+        }
+
+        .chat-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .chat-title { font-size: 14px; font-weight: 500; }
+        .chat-close {
+            font-size: 20px; cursor: pointer; opacity: 0.4;
+            transition: opacity 0.2s; line-height: 1;
+        }
+        .chat-close:hover { opacity: 1; }
+
+        .chat-context {
+            padding: 8px 20px; font-size: 11px;
+            color: rgba(255,255,255,0.3);
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .chat-messages {
+            flex: 1; padding: 16px 20px;
+            overflow-y: auto; min-height: 200px; max-height: 280px;
+        }
+        .chat-messages::-webkit-scrollbar { width: 3px; }
+        .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+        .chat-msg {
+            margin-bottom: 12px; padding: 10px 14px;
+            border-radius: 12px; font-size: 13px;
+            line-height: 1.5; max-width: 90%;
+            word-wrap: break-word;
+        }
+        .chat-msg.user {
+            background: rgba(99,102,241,0.2);
+            margin-left: auto; text-align: right;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-msg.ai {
+            background: rgba(255,255,255,0.05);
+            border-bottom-left-radius: 4px;
+            color: rgba(255,255,255,0.8);
+        }
+        .chat-msg.ai.error { color: #f87171; }
+        .chat-msg.typing { color: rgba(255,255,255,0.3); font-style: italic; }
+
+        .chat-faq { padding: 0 20px 8px; }
+        .faq-label { font-size: 10px; color: rgba(255,255,255,0.25); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+        .faq-btn {
+            display: block; width: 100%; text-align: left;
+            padding: 7px 10px; margin-bottom: 4px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 8px; color: rgba(255,255,255,0.5);
+            font-size: 11px; cursor: pointer;
+            transition: background 0.2s;
+        }
+        .faq-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
+
+        .chat-input-row {
+            display: flex; padding: 12px 16px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            gap: 8px;
+        }
+        .chat-input-row input {
+            flex: 1; padding: 10px 14px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px; color: #fff;
+            font-size: 13px; outline: none;
+            transition: border-color 0.2s;
+        }
+        .chat-input-row input:focus { border-color: rgba(99,102,241,0.4); }
+        .chat-input-row input::placeholder { color: rgba(255,255,255,0.25); }
+        .chat-input-row button {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            border: none; border-radius: 10px;
+            color: #fff; font-size: 16px;
+            cursor: pointer; transition: opacity 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .chat-input-row button:hover { opacity: 0.85; }
+
+        /* === RESPONSIVE (mobile) === */
+        @media (max-width: 768px) {
+            #info-panel {
+                top: auto; bottom: 0; left: 0; right: 0;
+                width: 100%; max-height: 60vh;
+                transform: translateY(110%);
+                border-radius: 20px 20px 0 0;
+                border: 1px solid rgba(255,255,255,0.06);
+                border-bottom: none;
+            }
+            #info-panel.active { transform: translateY(0); }
+
+            #chat-panel {
+                left: 10px; right: 10px; bottom: 10px;
+                width: auto;
+            }
+
+            #ui-overlay { left: 14px; top: 14px; }
+            #ui-overlay h1 { font-size: 16px; }
+            #debug-panel { display: none; }
         }
     </style>
 </head>
 <body>
-    <div id="ui-overlay">
-        <h1>SAE 402 - AR Visualiser</h1>
-        <div class="status-badge">Mode Scan Actif</div>
-    </div>
-
-    <!-- Info Tab (Hidden by default) -->
-    <div id="info-tab">
-        <div class="close-btn" onclick="document.getElementById('info-tab').classList.remove('active')">✕</div>
-        <div class="info-title" id="tab-title">Hotspot Title</div>
-        <div class="info-body" id="tab-body">
-            Description of the scanned point will appear here.
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loading-logo">MARA</div>
+        <div class="loading-bar-track">
+            <div class="loading-bar-fill" id="loading-progress"></div>
         </div>
+        <div id="loading-status">Chargement...</div>
     </div>
 
+    <!-- Top Overlay -->
+    <div id="ui-overlay">
+        <h1>MARA - UR5e</h1>
+        <div class="status-badge">Maintenance AR</div>
+    </div>
+
+    <!-- Info Panel (technical sheet) -->
+    <div id="info-panel"></div>
+
+    <!-- Chat Toggle Button -->
+    <button id="chat-toggle" title="Assistant IA">&#9733;</button>
+
+    <!-- Chat Panel -->
+    <div id="chat-panel"></div>
+
+    <!-- 3D Canvas -->
     <div id="application-container">
         <canvas id="application-canvas"></canvas>
     </div>
 
+    <!-- Debug Panel -->
     <div id="debug-panel">
-        <strong>Database Sync</strong><br>
-        Status: <span id="db-status-text" class="status-badge" style="margin-top: 5px; background: none; border: none; padding: 0;">Checking...</span><br>
-        Last Update: <span id="last-update">--:--:--</span>
+        <strong>Systeme</strong><br>
+        API: <span id="db-status-text">Connexion...</span><br>
+        Moteur: PlayCanvas
     </div>
 
     <script type="module" src="/src/main.js"></script>
