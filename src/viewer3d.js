@@ -444,11 +444,14 @@ export async function startXRSession(placedCb = null) {
     if (!renderer) throw new Error('Viewer non initialisé');
     onRobotPlaced = placedCb;
 
-    // Demander la session AR avec hit-test obligatoire et dom-overlay optionnel
+    // Demander la session AR avec hit-test obligatoire et dom-overlay sur document.body.
+    // IMPORTANT : utiliser document.body (et non #ar-overlay) comme racine dom-overlay
+    // pour que TOUTE l'interface HTML (info-panel, chat-panel, etc.) reste visible
+    // par-dessus le flux caméra AR.
     const session = await navigator.xr.requestSession('immersive-ar', {
         requiredFeatures: ['hit-test'],
         optionalFeatures: ['dom-overlay'],
-        domOverlay: { root: document.getElementById('ar-overlay') || document.body }
+        domOverlay: { root: document.body }
     });
     xrSession = session;
 
@@ -552,25 +555,56 @@ function _placeRobotXR() {
     xrReticle.visible  = false;
     xrRobotPlaced      = true;
 
+    // Grossir les hotspots pour qu'ils soient bien visibles et cliquables en AR
+    hotspotMeshes.forEach(h => h.scale.setScalar(2.5));
+
+    // Afficher le viseur pour aider l'utilisateur à viser les hotspots
+    const crosshair = document.getElementById('ar-crosshair');
+    if (crosshair) crosshair.style.display = 'block';
+
     if (onRobotPlaced) onRobotPlaced();
 }
 
 /**
- * Raycast depuis le centre de la caméra XR pour détecter un hotspot tapé.
+ * Détecte le hotspot le plus proche du centre de la caméra XR.
+ *
+ * Méthode : distance perpendiculaire rayon → centre du hotspot en coordonnées monde.
+ * Plus fiable que l'intersection géométrique car les hotspots font ~2–3 cm après
+ * l'échelle XR (0.08 * 0.3 = 2.4 cm) — quasi impossible à viser avec un raycaster strict.
+ * Seuil de 12 cm autour du rayon de visée → confortable pour un usage mobile.
  */
 function _checkXRHotspotHit() {
     if (!hotspotMeshes.length) return;
-    const xrCam = renderer.xr.getCamera();
-    const origin  = new THREE.Vector3().setFromMatrixPosition(xrCam.matrixWorld);
-    const forward = new THREE.Vector3(0, 0, -1)
-        .applyMatrix4(xrCam.matrixWorld).sub(origin).normalize();
 
-    const hits = new THREE.Raycaster(origin, forward, 0.01, 20)
-        .intersectObjects(hotspotMeshes, false);
+    // Rayon issu du centre de la caméra XR (direction de visée du téléphone)
+    const xrCam  = renderer.xr.getCamera();
+    const origin = new THREE.Vector3().setFromMatrixPosition(xrCam.matrixWorld);
+    const dir    = new THREE.Vector3(0, 0, -1).transformDirection(xrCam.matrixWorld);
+    const ray    = new THREE.Ray(origin, dir);
 
-    if (hits.length > 0 && onHotspotClick) {
-        _flashHotspot(hits[0].object);
-        onHotspotClick(hits[0].object.userData.part);
+    // Distance perpendiculaire maximale tolérée (en mètres dans l'espace monde XR)
+    const HIT_THRESHOLD = 0.12; // 12 cm → facile à viser sur mobile
+
+    let bestHotspot = null;
+    let bestDist    = Infinity;
+
+    hotspotMeshes.forEach(h => {
+        const worldPos = new THREE.Vector3();
+        h.getWorldPosition(worldPos);
+
+        // Ignorer si le hotspot est derrière la caméra
+        if (worldPos.clone().sub(origin).dot(dir) <= 0) return;
+
+        const perpDist = ray.distanceToPoint(worldPos);
+        if (perpDist < HIT_THRESHOLD && perpDist < bestDist) {
+            bestDist    = perpDist;
+            bestHotspot = h;
+        }
+    });
+
+    if (bestHotspot && onHotspotClick) {
+        _flashHotspot(bestHotspot);
+        onHotspotClick(bestHotspot.userData.part);
     }
 }
 
@@ -620,10 +654,17 @@ function _onXRSessionEnd() {
         robotGroup.position.set(0, 2.1, 0);
         robotGroup.rotation.set(0, 0, Math.PI / 2);
     }
+    // Remettre les hotspots à leur taille normale
+    hotspotMeshes.forEach(h => h.scale.setScalar(1));
+
     if (gridHelper)   gridHelper.visible   = true;
     if (floorMeshRef) floorMeshRef.visible = true;
     if (scene)        scene.fog = new THREE.FogExp2(0x0d0d1a, 0.03);
     if (controls)     controls.enabled     = true;
+
+    // Masquer le viseur AR
+    const crosshair = document.getElementById('ar-crosshair');
+    if (crosshair) crosshair.style.display = 'none';
 
     xrSession     = null;
     xrRobotPlaced = false;

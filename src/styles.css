@@ -177,6 +177,65 @@ body {
 }
 #ar-quit-btn:hover { background: rgba(239,68,68,0.32); }
 
+/* ── Viseur AR ────────────────────────────────────────────────────────────────
+   Affiché au centre de l'écran après placement du robot.
+   L'utilisateur centre un hotspot dans le viseur puis tape pour l'ouvrir.           */
+#ar-crosshair {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none;
+}
+.crosshair-ring {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    border: 2px solid rgba(99,102,241,0.9);
+    box-shadow: 0 0 12px rgba(99,102,241,0.5), inset 0 0 8px rgba(99,102,241,0.2);
+    animation: crosshair-pulse 1.8s ease-in-out infinite;
+}
+.crosshair-dot {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #6366f1;
+    box-shadow: 0 0 6px #6366f1;
+}
+.crosshair-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    background: rgba(12,12,20,0.6);
+    backdrop-filter: blur(8px);
+    padding: 4px 10px;
+    border-radius: 8px;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    margin-top: 8px;
+}
+@keyframes crosshair-pulse {
+    0%, 100% { transform: scale(1);    opacity: 0.8; }
+    50%       { transform: scale(1.15); opacity: 1;   }
+}
+
+/* En AR, le panneau info glisse depuis le bas (mobile) même en paysage */
+#ar-overlay.active ~ #info-panel,
+#info-panel {
+    z-index: 600; /* au-dessus du canvas XR */
+}
+#ar-overlay.active ~ #chat-panel,
+#chat-panel {
+    z-index: 700;
+}
+#ar-overlay.active ~ #chat-toggle,
+#chat-toggle {
+    z-index: 700;
+}
+
 /* ════════════════════════════════════════════════════════════════════
    Panneau fiche technique
    ════════════════════════════════════════════════════════════════════ */

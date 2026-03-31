@@ -204,6 +204,11 @@ function setupInfoPanel() {
     document.querySelector('#info-panel .close-btn').addEventListener('click', () => {
         document.getElementById('info-panel').classList.remove('active');
         currentPart = null;
+        // En mode AR : réafficher le viseur quand on ferme la fiche technique
+        if (xrActive) {
+            const crosshair = document.getElementById('ar-crosshair');
+            if (crosshair) crosshair.style.display = 'block';
+        }
     });
 
     document.querySelectorAll('#info-panel .tab').forEach(tab => {
@@ -278,6 +283,12 @@ async function showPartInfo(part) {
     document.querySelector('#info-panel .tab[data-tab="general"]').classList.add('active');
     document.getElementById('tab-general').classList.add('active');
     document.getElementById('info-panel').classList.add('active');
+
+    // En mode AR : masquer le viseur pendant que la fiche est ouverte
+    if (xrActive) {
+        const crosshair = document.getElementById('ar-crosshair');
+        if (crosshair) crosshair.style.display = 'none';
+    }
 }
 
 /**

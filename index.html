@@ -37,15 +37,24 @@
         🖱️ Clic droit — Panoramique
     </div>
 
-    <!-- ── Overlay WebXR (dom-overlay) ──────────────────────────────────────── -->
-    <!-- Affiché par-dessus le flux caméra AR natif quand la session XR est active.
-         L'id 'ar-overlay' est passé comme domOverlay.root dans startXRSession(). -->
+    <!-- ── Overlay WebXR ────────────────────────────────────────────────────── -->
+    <!-- Visible quand la session XR est active (classe 'active').
+         dom-overlay root = document.body → toute l'UI reste visible en AR. -->
     <div id="ar-overlay">
         <!-- Instructions avant placement du robot -->
         <div id="ar-hint">
             <div class="ar-hint-icon">📷</div>
             <p>Pointez la caméra vers<br>une surface plane (table, sol…)<br>puis <strong>tapez</strong> pour poser le robot</p>
         </div>
+
+        <!-- Viseur central : visible après placement du robot pour aider à viser les hotspots.
+             Cachez le panel info sur l'hotspot ciblé, tapez pour l'ouvrir. -->
+        <div id="ar-crosshair" style="display:none">
+            <div class="crosshair-ring"></div>
+            <div class="crosshair-dot"></div>
+            <span class="crosshair-label">Visez un hotspot et tapez</span>
+        </div>
+
         <!-- Bouton quitter AR -->
         <button id="ar-quit-btn">✕ Quitter AR</button>
     </div>
