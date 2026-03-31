@@ -4,14 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MARA - Maintenance AR Robot UR5e</title>
-
-    <!-- Three.js charge via Vite (src/viewer3d.js) — pas de CDN A-Frame -->
-
     <link rel="stylesheet" href="/src/styles.css">
 </head>
 <body>
 
-    <!-- Loading Screen -->
+    <!-- ── Écran de chargement ──────────────────────────────────────────────── -->
     <div id="loading-screen">
         <div class="loading-logo">MARA</div>
         <div class="loading-bar-track">
@@ -20,107 +17,88 @@
         <div id="loading-status">Chargement...</div>
     </div>
 
-    <!-- Top Overlay -->
+    <!-- ── Overlay haut gauche : titre + badge statut API ───────────────────── -->
     <div id="ui-overlay">
-        <h1>MARA - UR5e</h1>
+        <h1>MARA — UR5e</h1>
         <div class="status-badge ar-active">Maintenance AR</div>
     </div>
 
-    <!-- Mode Toggle -->
-    <button id="mode-toggle">Mode Viewer 3D</button>
+    <!-- ── Bouton bascule Viewer 3D / AR (haut droite) ──────────────────────── -->
+    <button id="mode-toggle">Mode AR</button>
 
-    <!-- Flux camera pour le mode AR (fond derriere le canvas Three.js).
-         getUserMedia gere par main.js. Invisible par defaut, affiché en mode AR. -->
-    <video id="ar-camera" autoplay playsinline muted style="
-        display: none;
-        position: fixed; inset: 0;
-        width: 100vw; height: 100vh;
-        object-fit: cover;
-        z-index: 0;
-    "></video>
+    <!-- ── Canvas Three.js ──────────────────────────────────────────────────── -->
+    <!-- Toujours visible : fond sombre en viewer 3D, transparent en mode XR -->
+    <canvas id="viewer-canvas"></canvas>
 
-    <!-- Canvas Three.js : visible en permanence (fond transparent en mode AR, sombre en viewer 3D) -->
-    <canvas id="viewer-canvas" style="
-        display: block;
-        position: fixed;
-        inset: 0;
-        width: 100vw;
-        height: 100vh;
-        z-index: 1;
-    "></canvas>
-
-    <!-- Aide navigation viewer -->
-    <div id="viewer-hint" style="
-        display: none;
-        position: fixed; bottom: 80px; right: 20px;
-        background: rgba(12,12,20,0.85); backdrop-filter: blur(12px);
-        border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 12px; padding: 12px 16px;
-        font-size: 11px; color: rgba(255,255,255,0.4);
-        z-index: 100; line-height: 1.8;
-        pointer-events: none;">
+    <!-- ── Aide navigation viewer 3D ────────────────────────────────────────── -->
+    <div id="viewer-hint">
         🖱️ Clic + glisser — Orbiter<br>
         🖱️ Molette — Zoom<br>
-        🖱️ Clic droit + glisser — Panoramique
+        🖱️ Clic droit — Panoramique
     </div>
 
-    <!-- Info Panel (Fiche technique) -->
+    <!-- ── Overlay WebXR (dom-overlay) ──────────────────────────────────────── -->
+    <!-- Affiché par-dessus le flux caméra AR natif quand la session XR est active.
+         L'id 'ar-overlay' est passé comme domOverlay.root dans startXRSession(). -->
+    <div id="ar-overlay">
+        <!-- Instructions avant placement du robot -->
+        <div id="ar-hint">
+            <div class="ar-hint-icon">📷</div>
+            <p>Pointez la caméra vers<br>une surface plane (table, sol…)<br>puis <strong>tapez</strong> pour poser le robot</p>
+        </div>
+        <!-- Bouton quitter AR -->
+        <button id="ar-quit-btn">✕ Quitter AR</button>
+    </div>
+
+    <!-- ── Panneau fiche technique ───────────────────────────────────────────── -->
     <div id="info-panel">
         <button class="close-btn">&times;</button>
 
         <div class="panel-header">
             <div class="part-icon">&#9881;</div>
             <div>
-                <h2 id="panel-title">Nom composant</h2>
-                <span id="panel-category" class="badge">Identification</span>
+                <h2 id="panel-title">Composant</h2>
+                <span id="panel-category" class="badge">Catégorie</span>
             </div>
         </div>
 
         <div class="tabs">
-            <button class="tab active" data-tab="general">General</button>
-            <button class="tab" data-tab="specs">Specs</button>
-            <button class="tab" data-tab="docs">Documents</button>
-            <button class="tab" data-tab="maintenance">Maintenance</button>
+            <button class="tab active" data-tab="general">Général</button>
+            <button class="tab"        data-tab="specs">Specs</button>
+            <button class="tab"        data-tab="docs">Documents</button>
+            <button class="tab"        data-tab="maintenance">Maintenance</button>
         </div>
 
-        <div id="tab-general" class="tab-content active">
-            <p id="panel-description"></p>
-        </div>
-        <div id="tab-specs" class="tab-content">
-            <table id="specs-table" class="specs-table"></table>
-        </div>
-        <div id="tab-docs" class="tab-content">
-            <div id="docs-list"></div>
-        </div>
-        <div id="tab-maintenance" class="tab-content">
-            <div id="maintenance-info"></div>
-        </div>
+        <div id="tab-general"     class="tab-content active"><p id="panel-description"></p></div>
+        <div id="tab-specs"       class="tab-content"><table id="specs-table" class="specs-table"></table></div>
+        <div id="tab-docs"        class="tab-content"><div id="docs-list"></div></div>
+        <div id="tab-maintenance" class="tab-content"><div id="maintenance-info"></div></div>
 
-        <button id="ask-ai-btn">&#9733; Poser une question a l'IA</button>
+        <button id="ask-ai-btn">&#9733; Poser une question à l'IA</button>
     </div>
 
-    <!-- Chat Toggle -->
-    <button id="chat-toggle" title="Assistant IA">&#9733;</button>
+    <!-- ── Bouton flottant chat ──────────────────────────────────────────────── -->
+    <button id="chat-toggle" title="Assistant IA MARA">&#9733;</button>
 
-    <!-- Chat Panel -->
+    <!-- ── Panneau chat assistant IA ────────────────────────────────────────── -->
     <div id="chat-panel">
         <div class="chat-header">
             <span>&#9733; Assistant MARA</span>
             <button>&times;</button>
         </div>
-        <div class="chat-context" id="chat-context">Contexte : General UR5e</div>
+        <div class="chat-context" id="chat-context">Contexte : Général UR5e</div>
         <div id="chat-messages"></div>
         <div id="chat-faq"></div>
         <div class="chat-input-zone">
-            <input type="text" id="chat-input" placeholder="Posez votre question..." autocomplete="off">
+            <input type="text" id="chat-input" placeholder="Posez votre question…" autocomplete="off">
             <button id="chat-send-btn">Envoyer</button>
         </div>
     </div>
 
-    <!-- Indicateur mode AR -->
+    <!-- ── Indicateur statut (bas droite) ───────────────────────────────────── -->
     <div id="marker-indicator">
         <div class="indicator-dot"></div>
-        <span id="marker-status">Caméra inactive</span>
+        <span id="marker-status">Viewer 3D</span>
     </div>
 
     <script type="module" src="/src/main.js"></script>
