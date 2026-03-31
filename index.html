@@ -5,12 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MARA - Maintenance AR Robot UR5e</title>
 
-    <!-- A-Frame -->
-    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-    <!-- AR.js pour A-Frame (Image Tracking) -->
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <!-- A-Frame Extras : orbit-controls pour le viewer 3D -->
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.0/dist/aframe-extras.min.js"></script>
+    <!-- Three.js charge via Vite (src/viewer3d.js) — pas de CDN A-Frame -->
 
     <link rel="stylesheet" href="/src/styles.css">
 </head>
@@ -34,62 +29,24 @@
     <!-- Mode Toggle -->
     <button id="mode-toggle">Mode Viewer 3D</button>
 
-    <!-- Scene A-Frame AR -->
-    <a-scene
-        id="ar-scene"
-        embedded
-        arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false;"
-        renderer="logarithmicDepthBuffer: true; antialias: true;"
-        vr-mode-ui="enabled: false"
-        loading-screen="enabled: false">
-
-        <!-- Assets (prechargement) -->
-        <a-assets>
-            <a-asset-item id="robot-model" src="/models/UR5e.glb"></a-asset-item>
-        </a-assets>
-
-        <!--
-          Marqueur AR :
-          - Pour test rapide sans impression : changer en <a-marker preset="hiro">
-          - Pour demo finale : garder pattern + imprimer /markers/pattern-marker.patt
-          Generateur de marqueur : https://ar-js-org.github.io/AR.js/three.js/examples/marker-training/
-        -->
-        <a-marker type="pattern" url="/markers/pattern-marker.patt" smooth="true" smoothCount="5" smoothTolerance="0.01">
-
-            <!-- Modele 3D du robot UR5e -->
-            <a-entity
-                id="robot"
-                gltf-model="#robot-model"
-                scale="0.01 0.01 0.01"
-                position="0 0 0"
-                rotation="0 0 0">
-            </a-entity>
-
-            <!-- Hotspots sont generes dynamiquement par main.js -->
-
-        </a-marker>
-
-        <!-- Camera AR avec curseur -->
-        <a-entity camera look-controls="enabled: false">
-            <a-cursor
-                fuse="false"
-                raycaster="objects: .clickable"
-                color="#6366f1"
-                scale="0.5 0.5 0.5">
-            </a-cursor>
-        </a-entity>
-
-    </a-scene>
-
-    <!-- Viewer 3D Three.js (canvas natif, fiable) -->
-    <canvas id="viewer-canvas" style="
+    <!-- Flux camera pour le mode AR (fond derriere le canvas Three.js).
+         getUserMedia gere par main.js. Invisible par defaut, affiché en mode AR. -->
+    <video id="ar-camera" autoplay playsinline muted style="
         display: none;
+        position: fixed; inset: 0;
+        width: 100vw; height: 100vh;
+        object-fit: cover;
+        z-index: 0;
+    "></video>
+
+    <!-- Canvas Three.js : visible en permanence (fond transparent en mode AR, sombre en viewer 3D) -->
+    <canvas id="viewer-canvas" style="
+        display: block;
         position: fixed;
         inset: 0;
         width: 100vw;
         height: 100vh;
         z-index: 1;
-        background: #0d0d1a;
     "></canvas>
 
     <!-- Aide navigation viewer -->
@@ -160,10 +117,10 @@
         </div>
     </div>
 
-    <!-- Marker Detection Indicator -->
+    <!-- Indicateur mode AR -->
     <div id="marker-indicator">
         <div class="indicator-dot"></div>
-        <span id="marker-status">Recherche marqueur...</span>
+        <span id="marker-status">Caméra inactive</span>
     </div>
 
     <script type="module" src="/src/main.js"></script>

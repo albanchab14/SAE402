@@ -1,15 +1,14 @@
-// MARA - Main Application Logic (A-Frame + AR.js + Three.js viewer)
-import './components/hotspot.js';
-import './components/robot-info.js';
+// MARA - Main Application Logic (Three.js viewer + camera feed pour AR)
 import { fetchParts, fetchPart, fetchFaq, askAI, logInteraction } from './api/api-client.js';
 import fallbackData from './data/robot-parts.json';
-import { initViewer, stopViewer } from './viewer3d.js';
+import { initViewer, stopViewer, setViewerMode, setARControls } from './viewer3d.js';
 
 // --- State ---
-let currentPart = null;
-let chatOpen    = false;
-let arMode      = true;
-let apiOnline   = false;
+let currentPart    = null;
+let chatOpen       = false;
+let arMode         = true;   // true = AR (camera + transparent Three.js)
+let apiOnline      = false;
+let cameraStream   = null;   // flux getUserMedia
 
 // --- DOM refs (loading screen) ---
 const loadingScreen = document.getElementById('loading-screen');
@@ -63,7 +62,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
         console.warn('[MARA] API indisponible, utilisation données locales');
         apiOnline = false;
-        // Normaliser le format du JSON local pour correspondre a l API
         parts = fallbackData.parts.map(p => ({
             ...p,
             hotspot_x: p.hotspot_position?.x ?? 0,
@@ -74,92 +72,72 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     updateStatusBadge(apiOnline);
 
-    setLoading(60, 'Création des hotspots AR...');
-    createHotspotsAR(parts);
+    setLoading(60, 'Initialisation viewer 3D...');
+
+    // --- Initialiser le viewer Three.js (toujours actif, les deux modes l'utilisent) ---
+    const viewerCanvas = document.getElementById('viewer-canvas');
+    initViewer(viewerCanvas, parts, async (part) => {
+        await showPartInfo(part);
+        logInteraction('hotspot_click', part.id, { name: part.name });
+    });
 
     setLoading(80, 'Initialisation interface...');
     setupInfoPanel();
     setupChatPanel();
     setupModeToggle(parts);
 
-    // --- Ecoute des clics sur les hotspots AR ---
-    window.addEventListener('hotspot-click', async (e) => {
-        const { partId } = e.detail;
-        // Chercher d'abord par ID exact, sinon par index
-        const part = parts.find(p => p.id === partId) || parts[partId - 1];
-        if (part) {
-            await showPartInfo(part);
-            logInteraction('hotspot_click_ar', part.id, { name: part.name });
-        }
-    });
-
-    // --- Detection du marqueur AR ---
-    const marker         = document.querySelector('a-marker');
-    const indicatorDot   = document.querySelector('.indicator-dot');
-    const markerStatus   = document.getElementById('marker-status');
-    if (marker) {
-        marker.addEventListener('markerFound', () => {
-            if (indicatorDot) indicatorDot.classList.add('found');
-            if (markerStatus) markerStatus.textContent = 'Marqueur détecté ✓';
-        });
-        marker.addEventListener('markerLost', () => {
-            if (indicatorDot) indicatorDot.classList.remove('found');
-            if (markerStatus) markerStatus.textContent = 'Recherche marqueur...';
-        });
-    }
+    // --- Demarrer en mode AR par defaut : camera + fond transparent + controles gyroscope ---
+    setLoading(90, 'Démarrage caméra...');
+    await startARCamera();
+    setViewerMode(true);   // fond transparent
+    setARControls(true);   // gyroscope + drag, OrbitControls OFF
 
     setLoading(100, 'Prêt !');
     setTimeout(hideLoading, 600);
 });
 
 // ============================================================
-// Création des hotspots dans la scene A-Frame (mode AR)
+// Gestion du flux caméra (mode AR)
 // ============================================================
 
 /**
- * Crée les spheres hotspot cliquables dans la scene A-Frame.
- * Positions issues de hotspot_x/y/z (coordonnées relatives au marqueur AR).
- * @param {Array} parts - Tableau des composants du robot
+ * Demande l'acces a la camera et affiche le flux en fond.
+ * Utilise la camera arriere sur mobile (facingMode: environment).
  */
-function createHotspotsAR(parts) {
-    const marker = document.querySelector('a-marker');
-    if (!marker) return;
+async function startARCamera() {
+    const video       = document.getElementById('ar-camera');
+    const dot         = document.querySelector('.indicator-dot');
+    const statusLabel = document.getElementById('marker-status');
+    if (!video) return;
 
-    parts.forEach(part => {
-        const x = parseFloat(part.hotspot_x ?? part.hotspot_position?.x ?? 0);
-        const y = parseFloat(part.hotspot_y ?? part.hotspot_position?.y ?? 0);
-        const z = parseFloat(part.hotspot_z ?? part.hotspot_position?.z ?? 0);
-
-        // Sphere principale (visible, animée)
-        const sphere = document.createElement('a-sphere');
-        sphere.setAttribute('position', `${x} ${y} ${z}`);
-        sphere.setAttribute('radius', '0.03');
-        sphere.setAttribute('color', '#6366f1');
-        sphere.setAttribute('material',
-            'emissive: #6366f1; emissiveIntensity: 0.5; transparent: true; opacity: 0.85'
-        );
-        sphere.classList.add('clickable');
-        sphere.setAttribute('data-part-id', part.id);
-
-        // Animation pulsation (A-Frame accepte un objet directement)
-        sphere.setAttribute('animation', {
-            property : 'scale',
-            to       : '1.3 1.3 1.3',
-            dur      : 800,
-            dir      : 'alternate',
-            loop     : true,
-            easing   : 'easeInOutSine'
+    try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false
         });
+        video.srcObject = cameraStream;
+        video.style.display = 'block';
+        if (dot)         dot.classList.add('found');
+        if (statusLabel) statusLabel.textContent = 'Caméra active ✓';
+    } catch (e) {
+        console.warn('[MARA] Caméra non disponible :', e.message);
+        if (statusLabel) statusLabel.textContent = 'Caméra indisponible';
+    }
+}
 
-        // Clic → ouvre la fiche technique
-        sphere.addEventListener('click', () => {
-            window.dispatchEvent(new CustomEvent('hotspot-click', {
-                detail: { partId: part.id, label: part.name_fr }
-            }));
-        });
+/** Stoppe le flux camera et masque la video. */
+function stopARCamera() {
+    const video       = document.getElementById('ar-camera');
+    const dot         = document.querySelector('.indicator-dot');
+    const statusLabel = document.getElementById('marker-status');
 
-        marker.appendChild(sphere);
-    });
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+    }
+    if (video)       video.style.display   = 'none';
+    if (dot)         dot.classList.remove('found');
+    if (statusLabel) statusLabel.textContent = 'Caméra inactive';
 }
 
 // ============================================================
@@ -418,44 +396,39 @@ function appendMessage(type, text) {
 // ============================================================
 
 /**
- * Configure le bouton de bascule entre mode AR et mode Viewer 3D.
- * @param {Array} parts - Données des composants (passées au viewer 3D)
+ * Configure le bouton de bascule AR / Viewer 3D.
+ * AR    : camera en fond + fond Three.js transparent + grille masquee
+ * Viewer: camera arretee + fond Three.js sombre + grille visible
+ * Le viewer Three.js reste initialise dans les deux cas (pas de stop/reinit).
  */
 function setupModeToggle(parts) {
     const btn = document.getElementById('mode-toggle');
     if (!btn) return;
 
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
         arMode = !arMode;
 
-        const arScene        = document.getElementById('ar-scene');
-        const viewerCanvas   = document.getElementById('viewer-canvas');
-        const markerIndicator= document.getElementById('marker-indicator');
-        const viewerHint     = document.getElementById('viewer-hint');
+        const markerIndicator = document.getElementById('marker-indicator');
+        const viewerHint      = document.getElementById('viewer-hint');
 
         if (arMode) {
-            // --- Retour mode AR ---
-            if (arScene)         arScene.style.display        = '';
-            if (viewerCanvas)    viewerCanvas.style.display   = 'none';
-            if (markerIndicator) markerIndicator.style.display= '';
-            if (viewerHint)      viewerHint.style.display     = 'none';
-            btn.textContent      = 'Mode Viewer 3D';
-            btn.style.borderColor= '';
-            stopViewer(); // Libérer les ressources Three.js
+            // --- Mode AR : camera + fond transparent + gyroscope ---
+            await startARCamera();
+            setViewerMode(true);
+            setARControls(true);
+            if (markerIndicator) markerIndicator.style.display = '';
+            if (viewerHint)      viewerHint.style.display      = 'none';
+            btn.textContent       = 'Mode Viewer 3D';
+            btn.style.borderColor = '';
         } else {
-            // --- Passage mode Viewer 3D ---
-            if (arScene)         arScene.style.display        = 'none';
-            if (viewerCanvas)    viewerCanvas.style.display   = 'block';
-            if (markerIndicator) markerIndicator.style.display= 'none';
-            if (viewerHint)      viewerHint.style.display     = 'block';
-            btn.textContent      = 'Mode AR';
-            btn.style.borderColor= 'rgba(99,102,241,0.5)';
-
-            // Initialiser le viewer Three.js
-            initViewer(viewerCanvas, parts, async (part) => {
-                await showPartInfo(part);
-                logInteraction('hotspot_click_3d', part.id, { name: part.name });
-            });
+            // --- Mode Viewer 3D : fond sombre, grille, OrbitControls ---
+            stopARCamera();
+            setViewerMode(false);
+            setARControls(false);
+            if (markerIndicator) markerIndicator.style.display = 'none';
+            if (viewerHint)      viewerHint.style.display      = 'block';
+            btn.textContent       = 'Mode AR';
+            btn.style.borderColor = 'rgba(99,102,241,0.5)';
         }
     });
 }

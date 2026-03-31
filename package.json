@@ -21,5 +21,8 @@
     "aframe": "^1.7.1",
     "three": "^0.183.2",
     "vite": "^8.0.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.3.0"
   }
 }

@@ -334,6 +334,25 @@ body {
     50% { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
 }
 
+/* === AR.js — Fix camera video fill ===
+   Force la video de la webcam a couvrir tout l'ecran sans deformation.
+   Sans ca, AR.js peut creer une video zoomee ou mal calee selon le navigateur. */
+video {
+    position: fixed !important;
+    top: 0 !important; left: 0 !important;
+    width: 100vw !important; height: 100vh !important;
+    object-fit: cover !important;
+    z-index: 0;
+}
+/* Le canvas A-Frame doit aussi couvrir le viewport */
+.a-canvas {
+    width: 100vw !important;
+    height: 100vh !important;
+    position: fixed !important;
+    top: 0 !important; left: 0 !important;
+    z-index: 1;
+}
+
 /* === RESPONSIVE === */
 @media (max-width: 768px) {
     #info-panel {
