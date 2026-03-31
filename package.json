@@ -18,7 +18,8 @@
   "license": "ISC",
   "homepage": "https://github.com/albanchab14/SAE402#readme",
   "dependencies": {
-    "playcanvas": "^2.17.2",
+    "aframe": "^1.7.1",
+    "three": "^0.183.2",
     "vite": "^8.0.3"
   }
 }

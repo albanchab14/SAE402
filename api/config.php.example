@@ -1,0 +1,39 @@
+<?php
+// ============================================================
+// MARA SAE402 - Configuration base de données + IA
+// ============================================================
+// IMPORTANT : Copier ce fichier en "config.php" et remplir les valeurs.
+//             config.php est dans .gitignore — ne jamais commiter vos credentials.
+// ============================================================
+
+// --- Base de données MySQL ---
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'sae402');
+define('DB_USER', 'root');          // Utilisateur MySQL (XAMPP : root)
+define('DB_PASS', '');              // Mot de passe (XAMPP : vide par défaut)
+
+// --- Google Gemini API ---
+// Obtenir une clé gratuite sur : https://aistudio.google.com/app/apikey
+define('GEMINI_API_KEY', 'VOTRE_CLE_GEMINI_ICI');
+define('GEMINI_MODEL',   'gemini-1.5-flash');   // Modele rapide et gratuit
+
+// --- Connexion PDO (ne pas modifier) ---
+function get_db_connection(): ?PDO {
+    try {
+        $pdo = new PDO(
+            'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
+            DB_USER,
+            DB_PASS,
+            [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES   => false
+            ]
+        );
+        return $pdo;
+    } catch (PDOException $e) {
+        // En production, ne pas exposer les détails
+        error_log('[MARA] DB Error: ' . $e->getMessage());
+        return null;
+    }
+}

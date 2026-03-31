@@ -1,180 +1,220 @@
 {
-  "robot": {
-    "model": "Universal Robots UR5e",
-    "series": "e-Series",
-    "payload_kg": 5,
-    "reach_mm": 850,
-    "axes": 6,
-    "repeatability_mm": 0.03,
-    "tcp_speed_ms": 1,
-    "mass_kg": 20.6,
-    "protection_arm": "IP54",
-    "protection_box": "IP44",
-    "noise_dba": 65,
-    "power_typical_w": 200,
-    "power_max_w": 570,
-    "voltage": "100-240 VAC",
-    "frequency": "47-440 Hz",
-    "temperature_range": "0-50°C"
-  },
   "parts": [
     {
       "id": 1,
-      "name": "Base",
-      "name_fr": "Base",
-      "mesh_name": "Base",
-      "category": "identification",
-      "description": "Socle fixe du robot, point d'ancrage au sol ou à la surface de montage. Contient le moteur du Joint 1 et les LEDs de statut.",
+      "name": "Joint1_Base",
+      "name_fr": "Base (Joint 1)",
+      "category": "installation",
+      "description": "Socle rotatif du UR5e. Premier joint (Joint 1) de l'architecture 6 axes. Taille Size 1 (grand). Assure la rotation axiale complete (+/-360 deg) du bras entier. L'empreinte de fixation est une flasque Ø149mm avec 4 vis M6. Peut etre monte dans toute orientation : sol, plafond, mur, incline. Integre l'anneau LED de statut visible de loin.",
       "specs": {
-        "diametre": "149 mm",
-        "fixation": "4x M6",
-        "montage": "Toute orientation (sol, mur, plafond)",
-        "led_status": "Anneau LED indiquant l'état du robot",
-        "joint": "J1 - Rotation base",
-        "plage": "±360°",
-        "vitesse_max": "180°/s"
+        "Designation": "Joint 1 - Base",
+        "Taille joint": "Size 1 (grand)",
+        "Plage mouvement": "+/- 360 degres",
+        "Vitesse max": "180 deg/s",
+        "Empreinte": "Ø 149 mm",
+        "Fixation": "4 vis M6 sur PCD Ø 63 mm",
+        "Couple serrage sol/mur": "9 N.m",
+        "Couple serrage plafond": "12 N.m",
+        "Montage": "Toute orientation (sol, plafond, mur, incline)",
+        "Protection IP": "IP54",
+        "Indicateur LED": "Anneau couleur base (bleu/vert/orange/rouge)",
+        "Materiau": "Aluminium, plastique, acier"
       },
-      "hotspot": { "x": 0, "y": 0.05, "z": 0 }
+      "hotspot_position": { "x": -2.10, "y": 0.13, "z": 0.18 },
+      "mesh_name": "Base"
     },
     {
       "id": 2,
-      "name": "Shoulder",
-      "name_fr": "Épaule",
-      "mesh_name": "Shoulder",
+      "name": "Joint2_Shoulder",
+      "name_fr": "Epaule (Joint 2 - Shoulder)",
       "category": "identification",
-      "description": "Première articulation majeure (Joint 2). Relie la base au bras supérieur. Moteur brushless avec réducteur harmonique.",
+      "description": "Deuxieme joint du UR5e, appele Shoulder (Epaule). Taille Size 1 (grand). Premiere articulation apres la base, permet la rotation du bras dans le plan vertical. Integre moteur brushless BLDC, reducteur harmonique (harmonic drive) sans jeu, encodeur absolu multi-tours et frein a ressort fail-safe (engage automatiquement en cas de coupure d alimentation).",
       "specs": {
-        "joint": "J2 - Épaule",
-        "plage": "±360°",
-        "vitesse_max": "180°/s",
-        "moteur": "Brushless DC + réducteur harmonique",
-        "couple_nominal": "Élevé (charge structurelle principale)"
+        "Designation": "Joint 2 - Shoulder (Epaule)",
+        "Taille joint": "Size 1 (grand)",
+        "Plage mouvement": "+/- 360 degres",
+        "Vitesse max": "180 deg/s",
+        "Moteur": "Brushless sans balais (BLDC)",
+        "Reducteur": "Harmonique (harmonic drive) - jeu zero",
+        "Encodeur": "Absolu multi-tours",
+        "Frein": "A ressort fail-safe (engage si panne alim.)",
+        "Capteurs": "Courant moteur (detection collision)"
       },
-      "hotspot": { "x": 0, "y": 0.35, "z": 0 }
+      "hotspot_position": { "x": -1.90, "y": -0.03, "z": 0.18 },
+      "mesh_name": "Shoulder"
     },
     {
       "id": 3,
-      "name": "Upper Arm",
-      "name_fr": "Bras supérieur",
-      "mesh_name": "UpperArm",
+      "name": "UpperArm_Segment",
+      "name_fr": "Bras superieur (segment J2-J3)",
       "category": "identification",
-      "description": "Segment le plus long du bras robotique (425 mm). Relie l'épaule au coude.",
+      "description": "Segment mecanique entre le Shoulder (Joint 2) et le Elbow (Joint 3). Longueur 425 mm. C'est le segment le plus long du bras UR5e. Supporte les efforts les plus importants lors des deplacements avec charge utile. Sa rigidite en aluminium garantit la repetabilite a +/-0.03mm sur toute la portee.",
       "specs": {
-        "longueur": "425 mm",
-        "joint": "J2-J3",
-        "plage": "±360°",
-        "vitesse_max": "180°/s",
-        "materiau": "Aluminium haute résistance"
+        "Designation": "Bras superieur (Upper Arm)",
+        "Longueur segment J2-J3": "425 mm",
+        "Materiau": "Aluminium anodise",
+        "Protection IP": "IP54",
+        "Contribution portee max": "425 mm sur 850 mm total",
+        "Repetabilite garantie": "+/- 0.03 mm (ISO 9283)"
       },
-      "hotspot": { "x": 0, "y": 0.7, "z": -0.15 }
+      "hotspot_position": { "x": -1.48, "y": -0.03, "z": 0.15 },
+      "mesh_name": "UpperArm"
     },
     {
       "id": 4,
-      "name": "Elbow",
-      "name_fr": "Coude",
-      "mesh_name": "Elbow",
+      "name": "Joint3_Elbow",
+      "name_fr": "Coude (Joint 3 - Elbow)",
       "category": "identification",
-      "description": "Articulation intermédiaire (Joint 3). Permet la flexion/extension du bras.",
+      "description": "Troisieme joint du UR5e, appele Elbow (Coude). Taille Size 1 (grand), identique a la base et a l epaule. Articulation centrale du bras, relie le bras superieur (425mm) au bras inferieur (~392mm). Fonction securite : Elbow Speed Limit (limite vitesse coude) et Elbow Force Limit (limite force coude) - fonctions 12 et 13 des 17 fonctions de securite PLd Cat.3.",
       "specs": {
-        "joint": "J3 - Coude",
-        "plage": "±360°",
-        "vitesse_max": "180°/s",
-        "moteur": "Brushless DC + réducteur harmonique"
+        "Designation": "Joint 3 - Elbow (Coude)",
+        "Taille joint": "Size 1 (grand)",
+        "Plage mouvement": "+/- 360 degres",
+        "Vitesse max": "180 deg/s",
+        "Moteur": "Brushless sans balais (BLDC)",
+        "Reducteur": "Harmonique (harmonic drive)",
+        "Encodeur": "Absolu",
+        "Frein": "A ressort fail-safe",
+        "Fonctions securite": "Elbow Speed Limit + Elbow Force Limit (PLd Cat.3)"
       },
-      "hotspot": { "x": 0, "y": 1.05, "z": -0.1 }
+      "hotspot_position": { "x": -0.93, "y": 0.22, "z": 0.22 },
+      "mesh_name": "Elbow"
     },
     {
       "id": 5,
-      "name": "Wrist 1",
-      "name_fr": "Poignet 1 (Avant-bras)",
-      "mesh_name": "Wrist1",
+      "name": "ForeArm_Segment",
+      "name_fr": "Avant-bras (segment J3-J5)",
       "category": "identification",
-      "description": "Premier axe du poignet (Joint 4). Assure la rotation de l'avant-bras.",
+      "description": "Segment mecanique entre le Elbow (Joint 3) et Wrist 2 (Joint 5). Longueur ~392 mm. Relie l articulation centrale (coude) aux articulations fines du poignet. Avec le bras superieur, forme le bras mecanique principal du UR5e (425 + 392 = 817 mm des 850 mm de portee totale).",
       "specs": {
-        "joint": "J4 - Poignet 1",
-        "plage": "±360°",
-        "vitesse_max": "180°/s",
-        "taille": "Size 0"
+        "Designation": "Avant-bras (Forearm / Lower Arm)",
+        "Longueur segment J3-J5": "~392 mm",
+        "Materiau": "Aluminium anodise",
+        "Protection IP": "IP54",
+        "Portee max TCP": "850 mm depuis axe J1",
+        "Hauteur robot position zero": "~1000 mm (estime)"
       },
-      "hotspot": { "x": 0, "y": 1.15, "z": 0.1 }
+      "hotspot_position": { "x": -0.33, "y": 0.31, "z": 0.25 },
+      "mesh_name": "Forearm"
     },
     {
       "id": 6,
-      "name": "Wrist 2",
-      "name_fr": "Poignet 2",
-      "mesh_name": "Wrist2",
-      "category": "identification",
-      "description": "Deuxième axe du poignet (Joint 5). Permet l'inclinaison du poignet.",
+      "name": "Joint4_Wrist1",
+      "name_fr": "Poignet 1 (Joint 4 - Wrist 1)",
+      "category": "pieces_detachees",
+      "description": "Quatrieme joint du UR5e, premier du poignet (Wrist 1). Taille Size 0 (petit), plus compact que les joints Size 1 de la base, epaule et coude. Marque la transition vers les articulations fines d orientation. Permet l orientation de l avant-bras. Reference piece de rechange : 124100.",
       "specs": {
-        "joint": "J5 - Poignet 2",
-        "plage": "±360°",
-        "vitesse_max": "180°/s",
-        "reference": "124101"
+        "Designation": "Joint 4 - Wrist 1 (Poignet 1)",
+        "Taille joint": "Size 0 (petit)",
+        "Plage mouvement": "+/- 360 degres",
+        "Vitesse max": "180 deg/s",
+        "Moteur": "Brushless sans balais (BLDC)",
+        "Reducteur": "Harmonique (harmonic drive)",
+        "Encodeur": "Absolu",
+        "Frein": "A ressort fail-safe",
+        "Reference piece rechange": "124100",
+        "Duree vie nominale": "35 000 heures"
       },
-      "hotspot": { "x": 0, "y": 1.25, "z": 0.15 }
+      "hotspot_position": { "x": 0.16, "y": -0.07, "z": 0.20 },
+      "mesh_name": "Wrist1"
     },
     {
       "id": 7,
-      "name": "Tool Flange",
-      "name_fr": "Bride outil",
-      "mesh_name": "ToolFlange",
-      "category": "identification",
-      "description": "Interface de montage d'outil (Joint 6). Intègre un capteur Force/Couple 6 axes et un connecteur M8 8-pin.",
+      "name": "Joint5_Wrist2",
+      "name_fr": "Poignet 2 (Joint 5 - Wrist 2)",
+      "category": "pieces_detachees",
+      "description": "Cinquieme joint du UR5e, deuxieme du poignet (Wrist 2). Taille Size 0. Travaille en coordination avec Wrist 1 et Wrist 3 pour orienter l outil dans toutes les directions. Ces trois joints permettent d atteindre n importe quelle orientation de l outil dans l espace de travail. Reference piece : 124101.",
       "specs": {
-        "joint": "J6 - Bride outil",
-        "plage": "±360°",
-        "vitesse_max": "180°/s",
-        "norme_montage": "ISO 9409-1-50-4-M6",
-        "capteur_ft": "Force ±50N (±3.5N), Couple ±10Nm (±0.2Nm)",
-        "connecteur": "M8 8-pin",
-        "reference": "102414"
+        "Designation": "Joint 5 - Wrist 2 (Poignet 2)",
+        "Taille joint": "Size 0 (petit)",
+        "Plage mouvement": "+/- 360 degres",
+        "Vitesse max": "180 deg/s",
+        "Moteur": "Brushless sans balais (BLDC)",
+        "Reducteur": "Harmonique (harmonic drive)",
+        "Encodeur": "Absolu",
+        "Frein": "A ressort fail-safe",
+        "Reference piece rechange": "124101",
+        "Duree vie nominale": "35 000 heures"
       },
-      "hotspot": { "x": 0, "y": 1.35, "z": 0.2 }
+      "hotspot_position": { "x": 0.28, "y": 0.25, "z": 0.20 },
+      "mesh_name": "Wrist2"
     },
     {
       "id": 8,
-      "name": "Control Box",
-      "name_fr": "Boîtier de commande",
-      "mesh_name": "ControlBox",
-      "category": "alimentation",
-      "description": "Unité de contrôle principale du robot. Contient l'alimentation, les cartes de contrôle, et les interfaces de communication.",
+      "name": "Joint6_Wrist3_ToolFlange",
+      "name_fr": "Poignet 3 + Bride outil (Joint 6)",
+      "category": "pieces_detachees",
+      "description": "Sixieme et dernier joint du UR5e (Wrist 3), directement couple a la Bride outil. Taille Size 0. La bride outil est conforme ISO 9409-1-50-4-M6 et accueille tous les outils et effecteurs. Integre un capteur Force/Couple 6 axes standard (±50N / ±10N.m) - caracteristique differenciante du UR5e vs robots industriels classiques. Connecteur outil M8 8 broches femelle. Reference Wrist 3 : 102414.",
       "specs": {
-        "dimensions": "460 × 449 × 254 mm",
-        "masse": "12 kg",
-        "protection": "IP44",
-        "alimentation": "100-240 VAC, 47-440 Hz",
-        "io_digitales": "16 DI + 16 DO",
-        "io_analogiques": "2 AI + 2 AO",
-        "protocoles": "Modbus TCP, Ethernet/IP, PROFINET, ROS/ROS2",
-        "consommation_typique": "200 W",
-        "consommation_max": "570 W"
+        "Designation": "Joint 6 - Wrist 3 + Bride outil (Tool Flange)",
+        "Taille joint": "Size 0 (petit)",
+        "Plage mouvement": "+/- 360 degres",
+        "Vitesse max": "180 deg/s",
+        "Norme bride": "ISO 9409-1-50-4-M6",
+        "Connecteur outil": "M8 8 broches femelle",
+        "Capteur Force Fx/Fy/Fz": "+/- 50.0 N | precision +/- 3.5 N | exactitude +/- 4.0 N",
+        "Capteur Couple Tx/Ty/Tz": "+/- 10.0 N.m | precision +/- 0.2 N.m | exactitude +/- 0.3 N.m",
+        "Alimentation outil": "12V ou 24V DC, 1.5A (dual pin)",
+        "E/S num outil": "2 entrees + 2 sorties (NPN/PNP)",
+        "E/S ana outil": "2 entrees (0-10V / 4-20mA) ou 1x RS-485",
+        "Reference Wrist 3": "102414",
+        "Reference bride+capteur": "124085"
       },
-      "hotspot": { "x": 0.8, "y": 0.2, "z": 0.5 }
+      "hotspot_position": { "x": 0.50, "y": -0.07, "z": 0.15 },
+      "mesh_name": "ToolFlange"
     },
     {
       "id": 9,
-      "name": "Teach Pendant",
-      "name_fr": "Teach Pendant",
-      "mesh_name": "TeachPendant",
-      "category": "installation",
-      "description": "Tablette de programmation du robot. Interface tactile pour la programmation, le contrôle manuel et la configuration.",
+      "name": "ControlBox",
+      "name_fr": "Boitier de commande (Control Box)",
+      "category": "alimentation",
+      "description": "Unite de controle centrale du UR5e. Contient le calculateur industriel (PC temps-reel PolyScope), l alimentation puissance du bras, les modules E/S et les interfaces de communication. Alimente et pilote les 6 joints via un cable unique de 6 metres. Alimentation secteur universel 100-240 VAC. Supporte Modbus TCP, EthernetIP, PROFINET/PROFIsafe et ROS/ROS2.",
       "specs": {
-        "ecran": "12 pouces, 1280 × 800 px",
-        "dimensions": "300 × 231 × 50 mm",
-        "masse": "1.8 kg",
-        "protection": "IP54",
-        "cable": "4.5 m",
-        "interface": "Tactile capacitif"
+        "Designation": "Control Box CB-2 UR5e",
+        "Dimensions (L x H x P)": "460 x 449 x 254 mm",
+        "Poids": "12 kg",
+        "Protection IP": "IP44",
+        "Alimentation entree": "100-240 VAC, 47-440 Hz",
+        "Consommation typique": "200 W",
+        "Consommation maximale": "570 W",
+        "E/S num": "16 entrees + 16 sorties (24V, 2A total)",
+        "E/S ana": "2 entrees + 2 sorties (0-10V)",
+        "Entrees quadrature encodeur": "4",
+        "Alim E/S": "24V DC, 2A",
+        "Ethernet": "1 Gb/s (RJ45)",
+        "USB": "USB 2.0 + USB 3.0",
+        "Sortie video": "Mini DisplayPort",
+        "Protocoles": "Modbus TCP, EthernetIP, PROFINET, PROFIsafe, ROS/ROS2",
+        "IP defaut robot": "192.168.56.101",
+        "Materiau": "Acier peint poudre",
+        "Reference": "CB-2 UR5e"
       },
-      "hotspot": { "x": -0.8, "y": 0.2, "z": 0.5 }
+      "hotspot_position": { "x": -1.20, "y": -0.80, "z": 0.0 },
+      "mesh_name": "ControlBox"
+    },
+    {
+      "id": 10,
+      "name": "TeachPendant",
+      "name_fr": "Teach Pendant (tablette de programmation)",
+      "category": "identification",
+      "description": "Interface homme-machine du UR5e. Tablette tactile 12 pouces avec PolyScope (OS temps-reel propriétaire UR). Permet la programmation graphique, la configuration et le pilotage manuel. Integre un bouton E-Stop hardware (NC categorie 0, PLd) et un validateur 3 positions pour le FreeDrive. Le FreeDrive permet de programmer le robot en le guidant physiquement a la main - fonctionnalite cle pour la pedagogie.",
+      "specs": {
+        "Designation": "Teach Pendant TP5 e-Series",
+        "Ecran": "12 pouces tactile capacitif, 1280 x 800 pixels",
+        "Dimensions (L x H x P)": "300 x 231 x 50 mm",
+        "Poids": "1.8 kg (avec 1m de cable)",
+        "Longueur cable": "4.5 m",
+        "Protection IP": "IP54",
+        "Humidite": "<= 90% HR (sans condensation)",
+        "Logiciel": "PolyScope (5 onglets : Move, Program, Installation, Run, Log)",
+        "E-Stop": "Bouton hardware NC categorie 0, PLd",
+        "Validateur 3 positions": "Pour FreeDrive et mouvements manuels",
+        "FreeDrive": "Guidage manuel du bras a la main (mode teach-in)",
+        "Modes": "Automatic (pleine vitesse) / Manual T-Speed (<= 250 mm/s) / Remote",
+        "Reference": "TP5 (e-Series)"
+      },
+      "hotspot_position": { "x": 0.20, "y": -0.80, "z": 0.0 },
+      "mesh_name": "TeachPendant"
     }
-  ],
-  "categories": {
-    "identification": { "label": "Identification", "icon": "🔍" },
-    "alimentation": { "label": "Alimentation", "icon": "⚡" },
-    "raccordement": { "label": "Raccordement", "icon": "🔌" },
-    "installation": { "label": "Installation", "icon": "🔧" },
-    "maintenance": { "label": "Maintenance", "icon": "🛠️" },
-    "pieces_detachees": { "label": "Pièces détachées", "icon": "📦" }
-  }
+  ]
 }
