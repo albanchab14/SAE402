@@ -7,13 +7,17 @@
 // ============================================================
 
 // --- Base de données MySQL ---
+// Pour XAMPP : host=localhost, user=root, pass='' (vide)
+// Créer la base : importer db_setup.sql puis seed_data.sql dans phpMyAdmin
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'sae402');
 define('DB_USER', 'root');          // Utilisateur MySQL (XAMPP : root)
 define('DB_PASS', '');              // Mot de passe (XAMPP : vide par défaut)
 
 // --- Google Gemini API ---
-// Obtenir une clé gratuite sur : https://aistudio.google.com/app/apikey
+// 1. Aller sur https://aistudio.google.com/app/apikey
+// 2. Créer une clé API gratuite
+// 3. Coller la clé ci-dessous (garder les guillemets)
 define('GEMINI_API_KEY', 'VOTRE_CLE_GEMINI_ICI');
 define('GEMINI_MODEL',   'gemini-1.5-flash');   // Modele rapide et gratuit
 
