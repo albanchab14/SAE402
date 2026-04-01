@@ -17,7 +17,8 @@ import {
     setViewerMode,
     isXRSupported,
     startXRSession,
-    stopXRSession
+    stopXRSession,
+    clearMeshSelection
 } from './viewer3d.js';
 
 // ─── État global ──────────────────────────────────────────────────────────────
@@ -210,6 +211,7 @@ function _closeInfoPanel() {
     panel.style.top             = '';
     panel.style.transformOrigin = '';
     currentPart = null;
+    clearMeshSelection();
     // En mode AR : réafficher le viseur quand on ferme la fiche technique
     if (xrActive) {
         const crosshair = document.getElementById('ar-crosshair');
@@ -465,9 +467,17 @@ async function sendQuestion() {
         typing.remove();
         const msg = appendMessage('ai', result.answer || 'Pas de réponse.');
         if (result.source === 'cache') msg.title = 'Réponse depuis le cache FAQ';
-    } catch {
+    } catch (e) {
         typing.remove();
-        appendMessage('ai error', 'Erreur de connexion avec l\'assistant IA. Vérifiez que le backend PHP est lancé.');
+        // Si le backend a renvoyé une réponse "answer" malgré l'erreur, l'afficher
+        const fallbackAnswer = e.apiResponse?.answer;
+        if (fallbackAnswer) {
+            appendMessage('ai', fallbackAnswer);
+        } else {
+            appendMessage('ai error',
+                `Erreur IA : ${e.message || 'Vérifiez que le backend PHP est lancé (php -S 127.0.0.1:8000 -t api/) et que MySQL est démarré.'}`
+            );
+        }
     } finally {
         input.disabled = false;
         document.getElementById('chat-send-btn').disabled = false;

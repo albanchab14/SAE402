@@ -61,18 +61,48 @@ export async function fetchFaq(partId = null) {
 }
 
 /**
- * Envoie une question a l'assistant IA Gemini (via le backend PHP).
- * @param {string} question
+ * Envoie une question à l'assistant IA Gemini (via le backend PHP).
+ * Lance une erreur enrichie si le backend ou Gemini retourne une erreur,
+ * avec `.apiResponse` contenant la réponse parsée (pour afficher answer si dispo).
+ *
+ * @param {string}      question
  * @param {number|null} partId - contexte du composant actif
- * @returns {Promise<{answer: string, source: string}>}
+ * @returns {Promise<{status: string, answer: string, source: string}>}
  */
 export async function askAI(question, partId = null) {
-    const res = await fetchWithTimeout(API_URL, {
-        method : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body   : JSON.stringify({ action: 'ask_ai', question, part_id: partId })
-    }, 15000); // 15s pour Gemini (reponse IA plus lente)
-    return res.json();
+    let res;
+    try {
+        res = await fetchWithTimeout(API_URL, {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body   : JSON.stringify({ action: 'ask_ai', question, part_id: partId })
+        }, 20000); // 20 s pour Gemini
+    } catch (networkErr) {
+        // Timeout ou pas de réseau → backend PHP probablement arrêté
+        const err = new Error('Backend PHP injoignable. Lancez : php -S 127.0.0.1:8000 -t api/');
+        err.code = 'NETWORK';
+        throw err;
+    }
+
+    // Parser le JSON quelle que soit la réponse (le PHP renvoie toujours du JSON)
+    let data;
+    try {
+        data = await res.json();
+    } catch {
+        const err = new Error('Réponse invalide du serveur (pas du JSON).');
+        err.code = 'PARSE';
+        throw err;
+    }
+
+    // Si le PHP a signalé une erreur, propager avec les détails
+    if (data.status === 'error') {
+        const err = new Error(data.message || 'Erreur inconnue du backend.');
+        err.code        = 'API_ERROR';
+        err.apiResponse = data; // contient parfois data.answer (message utilisateur lisible)
+        throw err;
+    }
+
+    return data;
 }
 
 /**

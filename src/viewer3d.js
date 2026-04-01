@@ -4,14 +4,12 @@
  * Mode Viewer 3D (par défaut) :
  *   Fond sombre, grille, OrbitControls souris/tactile.
  *   Robot UR5e chargé depuis /models/UR5e.glb.
- *   Hotspots cliquables (sphères violettes animées) avec labels.
+ *   Clic direct sur un mesh du robot → highlight violet + fiche technique.
  *
  * Mode AR WebXR :
  *   Session immersive-ar + hit-test (ARCore Android / ARKit iOS).
  *   Anneau (réticule) violet qui suit la surface détectée.
- *   Tap → pose le robot à l'endroit pointé.
- *   Tap sur hotspot → ouvre la fiche technique.
- *   Requiert HTTPS + Chrome Android avec ARCore, ou Safari iOS 14+.
+ *   Tap → pose le robot. Tap sur le robot → highlight + fiche technique.
  */
 
 import * as THREE from 'three';
@@ -22,16 +20,51 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 let renderer, scene, camera, controls, animFrameId;
 let raycaster, mouse;
-let hotspotMeshes  = [];
-let hoveredHotspot = null;
 let robotModel     = null;
-let robotGroup     = null;   // Groupe parent : robot + hotspots, bras à la verticale
+let robotGroup     = null;   // Groupe parent : robot, bras à la verticale
+let robotMeshes    = [];     // Tous les meshes du GLB (pour le raycasting)
 let gridHelper     = null;
 let floorMeshRef   = null;
 let partsData      = [];
 let canvas         = null;
 let isInitialized  = false;
-let onHotspotClick = null;   // Callback(part) déclenché au clic sur un hotspot
+let onHotspotClick = null;   // Callback(part, screenPos) déclenché au clic
+
+// ─── Sélection / highlight ────────────────────────────────────────────────────
+
+// {mesh, originalMaterial} des meshes actuellement mis en violet
+let selectedMeshGroups = [];
+
+// Matériau de highlight partagé (violet / indigo)
+const HIGHLIGHT_MAT = new THREE.MeshStandardMaterial({
+    color      : 0x6366f1,
+    emissive   : 0x6366f1,
+    emissiveIntensity: 0.55,
+    roughness  : 0.3,
+    metalness  : 0.15,
+    transparent: true,
+    opacity    : 0.95,
+});
+
+// ─── Zones de la pièce le long de l'axe X local du robotGroup ────────────────
+//
+// Le bras UR5e s'étend le long de l'axe X local de robotGroup.
+// Valeurs calibrées depuis l'analyse du GLB (espace local après scale+center) :
+//   Base (J1) :            X ≈ -2.39  (bas du bras en monde : Y ≈ 0)
+//   Bride outil (J6) :     X ≈ +0.61  (haut du bras en monde : Y ≈ 2.7)
+//
+// Les frontières de zone sont les milieux entre deux hotspots consécutifs.
+//
+const PART_ZONES = [
+    { partName: 'Joint1_Base',               xMax: -2.00 },
+    { partName: 'Joint2_Shoulder',           xMax: -1.69 },
+    { partName: 'UpperArm_Segment',          xMax: -1.205 },
+    { partName: 'Joint3_Elbow',              xMax: -0.63 },
+    { partName: 'ForeArm_Segment',           xMax: -0.085 },
+    { partName: 'Joint4_Wrist1',             xMax:  0.22 },
+    { partName: 'Joint5_Wrist2',             xMax:  0.39 },
+    { partName: 'Joint6_Wrist3_ToolFlange',  xMax:  Infinity },
+];
 
 // ─── Variables WebXR ──────────────────────────────────────────────────────────
 
@@ -41,23 +74,20 @@ let xrRefSpace      = null;
 let xrReticle       = null;
 let xrController    = null;
 let xrRobotPlaced   = false;
-let onRobotPlaced   = null;  // Callback appelé quand le robot est posé sur la surface
+let onRobotPlaced   = null;
 
-// ─── Constante d'échelle XR ───────────────────────────────────────────────────
-// En WebXR 1 unité Three.js = 1 mètre réel.
-// Le robot est mis à l'échelle 3 unités dans le viewer (bras ≈ 3 m).
-// XR_SCALE = 0.3 → bras ≈ 90 cm (proche de la taille réelle UR5e 850 mm).
+// En WebXR : 1 unité Three.js = 1 m réel. XR_SCALE = 0.3 → bras ≈ 90 cm.
 const XR_SCALE = 0.3;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// initViewer — Point d'entrée public
+// initViewer
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Initialise le viewer Three.js sur le canvas fourni.
- * @param {HTMLCanvasElement} canvasEl - Canvas de rendu
- * @param {Array}             parts    - Données des composants (API ou JSON)
- * @param {Function}          clickCb  - fn(part) appelée au clic sur un hotspot
+ * Initialise le viewer Three.js.
+ * @param {HTMLCanvasElement} canvasEl
+ * @param {Array}             parts    - composants (API ou JSON fallback)
+ * @param {Function}          clickCb  - fn(part, screenPos) au clic
  */
 export function initViewer(canvasEl, parts = [], clickCb = null) {
     if (isInitialized) return;
@@ -67,7 +97,6 @@ export function initViewer(canvasEl, parts = [], clickCb = null) {
     onHotspotClick = clickCb;
 
     // ── Renderer ──────────────────────────────────────────────────────────────
-    // alpha:true nécessaire pour que WebXR AR puisse rendre sur fond caméra
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -75,7 +104,7 @@ export function initViewer(canvasEl, parts = [], clickCb = null) {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
     renderer.setClearColor(0x0d0d1a, 1);
-    renderer.xr.enabled = false; // activé uniquement pendant une session XR
+    renderer.xr.enabled = false;
 
     // ── Scène ─────────────────────────────────────────────────────────────────
     scene     = new THREE.Scene();
@@ -92,23 +121,22 @@ export function initViewer(canvasEl, parts = [], clickCb = null) {
     dir.position.set(4, 6, 4);
     dir.castShadow = true;
     dir.shadow.mapSize.set(2048, 2048);
-    dir.shadow.camera.near   = 0.5;
-    dir.shadow.camera.far    = 30;
-    dir.shadow.camera.left   = -5;
-    dir.shadow.camera.right  = 5;
-    dir.shadow.camera.top    = 5;
-    dir.shadow.camera.bottom = -5;
+    dir.shadow.camera.near = 0.5; dir.shadow.camera.far = 30;
+    dir.shadow.camera.left = -5;  dir.shadow.camera.right = 5;
+    dir.shadow.camera.top  =  5;  dir.shadow.camera.bottom = -5;
     scene.add(dir);
+    scene.add(new THREE.DirectionalLight(0x6366f1, 0.5).position.set(-4, 2, -3) && dir);
+    scene.add(new THREE.PointLight(0xa855f7, 0.7, 15).position.set(0, 5, 0) && dir);
 
+    // (lumières accent + top séparément pour éviter l'écrasement de ref)
     const accent = new THREE.DirectionalLight(0x6366f1, 0.5);
     accent.position.set(-4, 2, -3);
     scene.add(accent);
-
     const topLight = new THREE.PointLight(0xa855f7, 0.7, 15);
     topLight.position.set(0, 5, 0);
     scene.add(topLight);
 
-    // ── Sol + grille (masqués en mode AR) ─────────────────────────────────────
+    // ── Sol + grille ──────────────────────────────────────────────────────────
     gridHelper = new THREE.GridHelper(12, 24, 0x6366f1, 0x1a1a3a);
     gridHelper.position.y = -2;
     gridHelper.material.opacity = 0.2;
@@ -134,14 +162,14 @@ export function initViewer(canvasEl, parts = [], clickCb = null) {
 
     // ── OrbitControls ─────────────────────────────────────────────────────────
     controls = new OrbitControls(camera, canvas);
-    controls.enableDamping  = true;
-    controls.dampingFactor  = 0.08;
-    controls.rotateSpeed    = 0.5;
-    controls.zoomSpeed      = 1.2;
-    controls.panSpeed       = 0.7;
-    controls.minDistance    = 1.5;
-    controls.maxDistance    = 14;
-    controls.maxPolarAngle  = Math.PI * 0.88;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.rotateSpeed   = 0.5;
+    controls.zoomSpeed     = 1.2;
+    controls.panSpeed      = 0.7;
+    controls.minDistance   = 1.5;
+    controls.maxDistance   = 14;
+    controls.maxPolarAngle = Math.PI * 0.88;
     controls.target.set(0, 1.3, 0);
     controls.update();
 
@@ -149,12 +177,10 @@ export function initViewer(canvasEl, parts = [], clickCb = null) {
     raycaster = new THREE.Raycaster();
     mouse     = new THREE.Vector2();
 
-    // ── Événements ────────────────────────────────────────────────────────────
     canvas.addEventListener('click',     _onCanvasClick);
     canvas.addEventListener('mousemove', _onMouseMove);
     window.addEventListener('resize',    _onResize);
 
-    // ── Démarrer la boucle de rendu ───────────────────────────────────────────
     _animate();
 }
 
@@ -165,7 +191,7 @@ export function initViewer(canvasEl, parts = [], clickCb = null) {
 function _onModelLoaded(gltf) {
     robotModel = gltf.scene;
 
-    // Centrer le modèle sur son bounding box et le mettre à l'échelle
+    // Centrer + mettre à l'échelle
     const box    = new THREE.Box3().setFromObject(robotModel);
     const center = box.getCenter(new THREE.Vector3());
     const size   = box.getSize(new THREE.Vector3());
@@ -174,144 +200,140 @@ function _onModelLoaded(gltf) {
     const scale = 3.0 / Math.max(size.x, size.y, size.z);
     robotModel.scale.setScalar(scale);
 
-    // Ombres sur tous les meshes
+    // Ombres + collecte des meshes pour le raycasting
+    robotMeshes = [];
     robotModel.traverse(child => {
         if (child.isMesh) {
             child.castShadow    = true;
             child.receiveShadow = true;
+            robotMeshes.push(child);
         }
     });
 
-    // Groupe parent :
-    //   rotation Z = +90° → l'axe X du GLB (bras horizontal) devient l'axe Y (bras vertical)
-    //   position Y = +2.1 → base du bras à y = 0 dans l'espace monde
+    // Groupe parent : rotation Z = 90° → bras vertical ; Y = 2.1 → base au sol
     robotGroup = new THREE.Group();
     robotGroup.rotation.z = Math.PI / 2;
     robotGroup.position.set(0, 2.1, 0);
     robotGroup.add(robotModel);
     scene.add(robotGroup);
+    robotGroup.updateWorldMatrix(true, true);
 
-    // Caméra positionnée pour voir le robot debout
     camera.position.set(2.5, 1.5, 6);
     controls.target.set(0, 1.3, 0);
     controls.update();
-
-    // Créer les hotspots si les données sont disponibles
-    if (partsData.length > 0) _createHotspots(partsData);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Hotspots 3D
+// Détection de zone → partie du robot
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Crée les sphères hotspot et les attache au robotGroup.
- * Elles héritent de la rotation/position/scale du groupe.
- * @param {Array} parts - données des composants
+ * Convertit la coordonnée X locale dans robotGroup en nom de partie.
+ * Les zones sont définies par PART_ZONES (frontières milieu entre hotspots).
+ * @param {number} localX
+ * @returns {Object|null} - objet part depuis partsData, ou null
  */
-function _createHotspots(parts) {
-    // Supprimer anciens hotspots
-    hotspotMeshes.forEach(h => robotGroup ? robotGroup.remove(h) : scene.remove(h));
-    hotspotMeshes = [];
+function _getPartFromLocalX(localX) {
+    for (const zone of PART_ZONES) {
+        if (localX < zone.xMax) {
+            return partsData.find(p => p.name === zone.partName) || null;
+        }
+    }
+    return null;
+}
 
-    parts.forEach(part => {
-        const px = parseFloat(part.hotspot_x ?? part.hotspot_position?.x ?? 0);
-        const py = parseFloat(part.hotspot_y ?? part.hotspot_position?.y ?? 0);
-        const pz = parseFloat(part.hotspot_z ?? part.hotspot_position?.z ?? 0);
+// ─────────────────────────────────────────────────────────────────────────────
+// Highlight / sélection
+// ─────────────────────────────────────────────────────────────────────────────
 
-        // Sphère principale (glow violet)
-        const sphere = new THREE.Mesh(
-            new THREE.SphereGeometry(0.08, 16, 16),
-            new THREE.MeshStandardMaterial({
-                color: 0x6366f1, emissive: 0x6366f1, emissiveIntensity: 0.8,
-                roughness: 0.2,  metalness: 0.1,
-                transparent: true, opacity: 0.9
-            })
-        );
-        sphere.position.set(px, py, pz);
-        sphere.userData = { part, isHotspot: true };
+/**
+ * Met en violet tous les meshes de la même zone que localX,
+ * et restaure la sélection précédente.
+ * Passe localX = null pour tout déselectionner.
+ * @param {number|null} localX - position X locale dans robotGroup
+ */
+function _selectZone(localX) {
+    // Restaurer les matériaux originaux
+    selectedMeshGroups.forEach(({ mesh, mat }) => { mesh.material = mat; });
+    selectedMeshGroups = [];
 
-        // Anneau animé
-        const ring = new THREE.Mesh(
-            new THREE.RingGeometry(0.1, 0.13, 32),
-            new THREE.MeshBasicMaterial({
-                color: 0xa855f7, transparent: true, opacity: 0.6, side: THREE.DoubleSide
-            })
-        );
-        ring.userData = { isRing: true };
-        sphere.add(ring);
+    if (localX === null || !robotGroup) return;
 
-        // Label texte
-        const label = _createTextLabel(part.name_fr || part.name);
-        label.position.set(0, 0.18, 0);
-        sphere.add(label);
+    // Déterminer la zone (xMin/xMax) correspondant à localX
+    let zoneMin = -Infinity, zoneMax = Infinity;
+    for (let i = 0; i < PART_ZONES.length; i++) {
+        if (localX < PART_ZONES[i].xMax) {
+            zoneMax = PART_ZONES[i].xMax;
+            zoneMin = i > 0 ? PART_ZONES[i - 1].xMax : -Infinity;
+            break;
+        }
+    }
 
-        if (robotGroup) robotGroup.add(sphere);
-        else            scene.add(sphere);
-        hotspotMeshes.push(sphere);
+    // Appliquer le highlight à tous les meshes dont le centre tombe dans cette zone
+    robotMeshes.forEach(mesh => {
+        const worldCenter = new THREE.Vector3();
+        mesh.getWorldPosition(worldCenter);
+        const meshLocalX = robotGroup.worldToLocal(worldCenter.clone()).x;
+
+        if (meshLocalX >= zoneMin && meshLocalX < zoneMax) {
+            selectedMeshGroups.push({ mesh, mat: mesh.material });
+            mesh.material = HIGHLIGHT_MAT;
+        }
     });
 }
 
 /**
- * Crée un sprite texte via canvas 2D → texture Three.js.
- * @param {string} text
- * @returns {THREE.Sprite}
+ * Déselectionne tous les meshes et restaure leurs couleurs d'origine.
+ * Appelé depuis main.js quand le panneau est fermé.
  */
-function _createTextLabel(text) {
-    const cv  = document.createElement('canvas');
-    cv.width  = 256;
-    cv.height = 64;
-    const ctx = cv.getContext('2d');
-
-    ctx.fillStyle = 'rgba(13,13,26,0.75)';
-    ctx.roundRect(4, 4, 248, 56, 8);
-    ctx.fill();
-
-    ctx.fillStyle     = '#ffffff';
-    ctx.font          = 'bold 18px Inter, Arial, sans-serif';
-    ctx.textAlign     = 'center';
-    ctx.textBaseline  = 'middle';
-    ctx.fillText(text, 128, 32);
-
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: new THREE.CanvasTexture(cv), transparent: true, opacity: 0
-    }));
-    sprite.scale.set(0.6, 0.15, 1);
-    sprite.userData = { isLabel: true };
-    return sprite;
+export function clearMeshSelection() {
+    _selectZone(null);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Interactions souris / tactile (viewer 3D uniquement)
+// Interactions souris / tactile (viewer 3D)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _onCanvasClick(e) {
-    // Ne pas intercéder si une session XR est active (géré par _onXRTap)
-    if (xrSession) return;
+    if (xrSession || !robotMeshes.length) return;
 
     const rect = canvas.getBoundingClientRect();
     mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
     mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
-    const hits = raycaster.intersectObjects(hotspotMeshes, false);
-    if (hits.length > 0) {
-        const h = hits[0].object;
-        if (h.userData.part && onHotspotClick) {
-            _flashHotspot(h);
-            // Projeter la position monde du hotspot en coordonnées écran
-            const worldPos = new THREE.Vector3();
-            h.getWorldPosition(worldPos);
-            const screenPos = _worldToScreen(worldPos, camera);
-            onHotspotClick(h.userData.part, screenPos);
-        }
-    }
+    const hits = raycaster.intersectObjects(robotMeshes, false);
+    if (!hits.length) return;
+
+    // Convertir le point d'impact en espace local du robotGroup
+    const localPoint = robotGroup.worldToLocal(hits[0].point.clone());
+    const part       = _getPartFromLocalX(localPoint.x);
+    if (!part) return;
+
+    // Highlight de la zone cliquée
+    _selectZone(localPoint.x);
+
+    // Coordonnées écran du point d'impact pour positionner le panneau
+    const screenPos = _worldToScreen(hits[0].point, camera);
+    onHotspotClick?.(part, screenPos);
+}
+
+function _onMouseMove(e) {
+    if (!canvas || xrSession || !robotMeshes.length) return;
+
+    const rect = canvas.getBoundingClientRect();
+    mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+    mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+
+    const hits = raycaster.intersectObjects(robotMeshes, false);
+    canvas.style.cursor = hits.length > 0 ? 'pointer' : 'default';
 }
 
 /**
- * Projette une position 3D monde en coordonnées 2D écran (pixels CSS).
- * @param {THREE.Vector3} worldPos  - Position dans l'espace monde Three.js
- * @param {THREE.Camera}  cam       - Caméra active (viewer ou XR)
+ * Projette une position monde 3D en coordonnées 2D CSS (pixels).
+ * @param {THREE.Vector3} worldPos
+ * @param {THREE.Camera}  cam
  * @returns {{ x: number, y: number }}
  */
 function _worldToScreen(worldPos, cam) {
@@ -322,48 +344,6 @@ function _worldToScreen(worldPos, cam) {
     };
 }
 
-function _onMouseMove(e) {
-    if (!canvas || xrSession) return;
-    const rect = canvas.getBoundingClientRect();
-    mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
-    mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
-
-    const hits = raycaster.intersectObjects(hotspotMeshes, false);
-
-    // Réinitialiser l'ancien hover
-    if (hoveredHotspot && (!hits.length || hits[0].object !== hoveredHotspot)) {
-        hoveredHotspot.material.emissive.setHex(0x6366f1);
-        hoveredHotspot.material.emissiveIntensity = 0.8;
-        hoveredHotspot.scale.setScalar(1);
-        hoveredHotspot.children.forEach(c => {
-            if (c.userData.isLabel) c.material.opacity = 0;
-        });
-        hoveredHotspot   = null;
-        canvas.style.cursor = 'default';
-    }
-
-    if (hits.length > 0 && hits[0].object !== hoveredHotspot) {
-        hoveredHotspot = hits[0].object;
-        hoveredHotspot.material.emissive.setHex(0xa855f7);
-        hoveredHotspot.material.emissiveIntensity = 1.2;
-        hoveredHotspot.scale.setScalar(1.3);
-        hoveredHotspot.children.forEach(c => {
-            if (c.userData.isLabel) c.material.opacity = 1;
-        });
-        canvas.style.cursor = 'pointer';
-    }
-}
-
-/** Animation flash sur le hotspot cliqué. */
-function _flashHotspot(hotspot) {
-    let t = 0;
-    const id = setInterval(() => {
-        hotspot.material.emissiveIntensity = ++t % 2 === 0 ? 2.0 : 0.5;
-        if (t >= 6) { clearInterval(id); hotspot.material.emissiveIntensity = 0.8; }
-    }, 80);
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Boucle de rendu viewer 3D
 // ─────────────────────────────────────────────────────────────────────────────
@@ -371,23 +351,7 @@ function _flashHotspot(hotspot) {
 function _animate() {
     animFrameId = requestAnimationFrame(_animate);
     if (controls) controls.update();
-    _animateHotspots();
     renderer.render(scene, camera);
-}
-
-/** Pulsation + rotation anneau + billboard label (commun viewer et XR). */
-function _animateHotspots() {
-    const t = performance.now() * 0.001;
-    hotspotMeshes.forEach((h, i) => {
-        if (h !== hoveredHotspot) h.scale.setScalar(1 + Math.sin(t * 2 + i * 0.8) * 0.08);
-        h.children.forEach(c => {
-            if (c.userData.isRing) {
-                c.rotation.z += 0.015;
-                c.material.opacity = 0.4 + Math.sin(t * 3 + i) * 0.2;
-            }
-            if (c.userData.isLabel && camera) c.quaternion.copy(camera.quaternion);
-        });
-    });
 }
 
 function _onResize() {
@@ -402,16 +366,15 @@ function _onResize() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Met à jour les hotspots (si les données arrivent après le modèle).
+ * Met à jour les données des composants (si elles arrivent après le modèle).
  * @param {Array} parts
  */
 export function updateHotspots(parts) {
     partsData = parts;
-    if (robotGroup) _createHotspots(parts);
 }
 
 /**
- * Bascule le fond entre mode sombre (viewer 3D) et transparent.
+ * Bascule le fond entre mode sombre (viewer 3D) et transparent (AR).
  * @param {boolean} transparent
  */
 export function setViewerMode(transparent) {
@@ -428,20 +391,21 @@ export function stopViewer() {
     canvas?.removeEventListener('click',     _onCanvasClick);
     canvas?.removeEventListener('mousemove', _onMouseMove);
     window.removeEventListener('resize', _onResize);
+    selectedMeshGroups = [];
+    robotMeshes = [];
     if (renderer) { renderer.dispose(); renderer = null; }
     scene = camera = controls = null;
-    hotspotMeshes = [];
     robotModel = robotGroup = null;
     gridHelper = floorMeshRef = null;
     isInitialized = false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WebXR AR — Détection de surface + placement du robot
+// WebXR AR
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Vérifie si WebXR immersive-ar avec hit-test est supporté.
+ * Vérifie si WebXR immersive-ar est supporté.
  * @returns {Promise<boolean>}
  */
 export async function isXRSupported() {
@@ -451,21 +415,12 @@ export async function isXRSupported() {
 
 /**
  * Démarre une session WebXR AR.
- * La caméra du téléphone est gérée nativement par WebXR (pas getUserMedia).
- * Affiche un réticule violet sur la surface détectée.
- * Premier tap → pose le robot. Tap suivant → interaction hotspot.
- *
  * @param {Function} [placedCb] - appelée quand le robot est posé
- * @throws {Error} si WebXR indisponible ou permission refusée
  */
 export async function startXRSession(placedCb = null) {
     if (!renderer) throw new Error('Viewer non initialisé');
     onRobotPlaced = placedCb;
 
-    // Demander la session AR avec hit-test obligatoire et dom-overlay sur document.body.
-    // IMPORTANT : utiliser document.body (et non #ar-overlay) comme racine dom-overlay
-    // pour que TOUTE l'interface HTML (info-panel, chat-panel, etc.) reste visible
-    // par-dessus le flux caméra AR.
     const session = await navigator.xr.requestSession('immersive-ar', {
         requiredFeatures: ['hit-test'],
         optionalFeatures: ['dom-overlay'],
@@ -473,30 +428,21 @@ export async function startXRSession(placedCb = null) {
     });
     xrSession = session;
 
-    // IMPORTANT : Three.js demande 'local-floor' par défaut dans setSession(),
-    // ce qui échoue sur de nombreux appareils Android.
-    // On impose 'local' AVANT setSession() pour forcer ce type de référence.
+    // IMPORTANT : forcer 'local' AVANT setSession() pour éviter l'erreur local-floor
     renderer.xr.setReferenceSpaceType('local');
     renderer.xr.enabled = true;
     await renderer.xr.setSession(session);
 
-    // Espace de référence pour récupérer les poses des hit-test en coordonnées monde.
-    // 'local' est toujours disponible pour une session immersive-ar.
     xrRefSpace = await session.requestReferenceSpace('local');
-
-    // Source de hit-test : la direction de visée de la caméra (viewer space)
     const vwrSpace  = await session.requestReferenceSpace('viewer');
     xrHitTestSource = await session.requestHitTestSource({ space: vwrSpace });
 
-    // Créer le réticule (anneau qui suit la surface)
     _createXRReticle();
 
-    // Contrôleur 0 → gère les taps sur l'écran
     xrController = renderer.xr.getController(0);
     xrController.addEventListener('select', _onXRTap);
     scene.add(xrController);
 
-    // Masquer grille/sol/robot avant placement
     if (robotGroup)   robotGroup.visible   = false;
     if (gridHelper)   gridHelper.visible   = false;
     if (floorMeshRef) floorMeshRef.visible = false;
@@ -504,149 +450,93 @@ export async function startXRSession(placedCb = null) {
     if (controls)     controls.enabled     = false;
 
     xrRobotPlaced = false;
+    clearMeshSelection();
 
-    // Remplacer la boucle normale par la boucle XR
     if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
     renderer.setAnimationLoop(_xrRenderLoop);
 
     session.addEventListener('end', _onXRSessionEnd);
 }
 
-/**
- * Met fin à la session WebXR et revient au viewer 3D.
- */
+/** Met fin à la session WebXR. */
 export function stopXRSession() {
     if (xrSession) xrSession.end();
 }
 
-// ── Réticule (anneau qui suit la surface détectée) ───────────────────────────
+// ── Réticule ─────────────────────────────────────────────────────────────────
 
 function _createXRReticle() {
     if (xrReticle) { scene.remove(xrReticle); xrReticle.geometry?.dispose(); }
     const geo = new THREE.RingGeometry(0.1, 0.15, 32);
-    geo.rotateX(-Math.PI / 2); // couché à plat sur la surface
+    geo.rotateX(-Math.PI / 2);
     xrReticle = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
         color: 0x6366f1, side: THREE.DoubleSide
     }));
-    xrReticle.matrixAutoUpdate = false; // matrice fournie par le hit-test
+    xrReticle.matrixAutoUpdate = false;
     xrReticle.visible = false;
     scene.add(xrReticle);
 }
 
-// ── Gestion du tap écran ──────────────────────────────────────────────────────
+// ── Tap XR ────────────────────────────────────────────────────────────────────
 
 function _onXRTap() {
     if (!xrRobotPlaced) {
-        // 1er tap : poser le robot sur la surface détectée
         if (xrReticle?.visible) _placeRobotXR();
         return;
     }
 
-    // Si un panneau UI est déjà ouvert, le tap sert à fermer via le DOM —
-    // on ne déclenche PAS de détection de hotspot pour éviter de le rouvrir.
-    const panelOpen = document.querySelector('#info-panel.active, #chat-panel.active');
-    if (panelOpen) return;
+    // Si un panneau est ouvert, le tap ferme via DOM — ne pas rouvrir
+    if (document.querySelector('#info-panel.active, #chat-panel.active')) return;
 
-    // Aucun panneau ouvert : chercher un hotspot dans la direction de visée
     _checkXRHotspotHit();
 }
 
-/**
- * Place le robot à la position du réticule.
- * Le bras est toujours vertical, la base repose sur la surface.
- */
 function _placeRobotXR() {
     if (!robotGroup || !xrReticle) return;
 
-    // Position de la surface depuis la matrice du réticule
     const surfacePos = new THREE.Vector3();
     xrReticle.matrix.decompose(surfacePos, new THREE.Quaternion(), new THREE.Vector3());
 
     robotGroup.scale.setScalar(XR_SCALE);
-
-    // Bras vertical, base posée sur la surface
-    // Le centre géométrique du robot est à l'origine du groupe.
-    // Avec rotation Z = 90°, le bras s'étend de Y = -1.5 à Y = +1.5 unités.
-    // On décale de +1.5 * scale pour que la base soit sur la surface.
     robotGroup.rotation.set(0, 0, Math.PI / 2);
-    robotGroup.position.set(
-        surfacePos.x,
-        surfacePos.y + 1.5 * XR_SCALE,
-        surfacePos.z
-    );
-
+    robotGroup.position.set(surfacePos.x, surfacePos.y + 1.5 * XR_SCALE, surfacePos.z);
     robotGroup.visible = true;
     xrReticle.visible  = false;
     xrRobotPlaced      = true;
 
-    // Grossir les hotspots pour qu'ils soient bien visibles et cliquables en AR
-    hotspotMeshes.forEach(h => h.scale.setScalar(2.5));
-
-    // Afficher le viseur pour aider l'utilisateur à viser les hotspots
     const crosshair = document.getElementById('ar-crosshair');
     if (crosshair) crosshair.style.display = 'block';
-
     if (onRobotPlaced) onRobotPlaced();
 }
 
 /**
- * Détecte le hotspot le plus proche du centre de la caméra XR.
- *
- * Méthode : distance perpendiculaire rayon → centre du hotspot en coordonnées monde.
- * Plus fiable que l'intersection géométrique car les hotspots font ~2–3 cm après
- * l'échelle XR (0.08 * 0.3 = 2.4 cm) — quasi impossible à viser avec un raycaster strict.
- * Seuil de 12 cm autour du rayon de visée → confortable pour un usage mobile.
+ * Détecte la pièce dans la direction de visée de la caméra XR.
+ * Raycast contre les meshes réels du robot.
  */
 function _checkXRHotspotHit() {
-    if (!hotspotMeshes.length) return;
+    if (!robotMeshes.length || !robotGroup) return;
 
-    // Rayon issu du centre de la caméra XR (direction de visée du téléphone)
     const xrCam  = renderer.xr.getCamera();
-    const origin = new THREE.Vector3().setFromMatrixPosition(xrCam.matrixWorld);
-    const dir    = new THREE.Vector3(0, 0, -1).transformDirection(xrCam.matrixWorld);
-    const ray    = new THREE.Ray(origin, dir);
+    raycaster.setFromCamera({ x: 0, y: 0 }, xrCam); // centre de l'écran
 
-    // Distance perpendiculaire maximale tolérée (en mètres dans l'espace monde XR)
-    const HIT_THRESHOLD = 0.12; // 12 cm → facile à viser sur mobile
+    const hits = raycaster.intersectObjects(robotMeshes, false);
+    if (!hits.length) return;
 
-    let bestHotspot = null;
-    let bestDist    = Infinity;
+    const localPoint = robotGroup.worldToLocal(hits[0].point.clone());
+    const part       = _getPartFromLocalX(localPoint.x);
+    if (!part || !onHotspotClick) return;
 
-    hotspotMeshes.forEach(h => {
-        const worldPos = new THREE.Vector3();
-        h.getWorldPosition(worldPos);
+    _selectZone(localPoint.x);
 
-        // Ignorer si le hotspot est derrière la caméra
-        if (worldPos.clone().sub(origin).dot(dir) <= 0) return;
-
-        const perpDist = ray.distanceToPoint(worldPos);
-        if (perpDist < HIT_THRESHOLD && perpDist < bestDist) {
-            bestDist    = perpDist;
-            bestHotspot = h;
-        }
-    });
-
-    if (bestHotspot && onHotspotClick) {
-        _flashHotspot(bestHotspot);
-        // Projeter le hotspot en coordonnées écran pour positionner le panneau
-        const worldPos = new THREE.Vector3();
-        bestHotspot.getWorldPosition(worldPos);
-        const xrCam   = renderer.xr.getCamera();
-        const screenPos = _worldToScreen(worldPos, xrCam);
-        onHotspotClick(bestHotspot.userData.part, screenPos);
-    }
+    const screenPos = _worldToScreen(hits[0].point, xrCam);
+    onHotspotClick(part, screenPos);
 }
 
-// ── Boucle de rendu XR ────────────────────────────────────────────────────────
+// ── Boucle XR ─────────────────────────────────────────────────────────────────
 
-/**
- * Boucle appelée par le système WebXR à chaque frame.
- * Met à jour le réticule via hit-test et anime les hotspots.
- */
 function _xrRenderLoop(timestamp, frame) {
     if (!frame) return;
 
-    // Mettre à jour le réticule tant que le robot n'est pas posé
     if (xrHitTestSource && !xrRobotPlaced) {
         const results = frame.getHitTestResults(xrHitTestSource);
         if (results.length > 0) {
@@ -660,38 +550,34 @@ function _xrRenderLoop(timestamp, frame) {
         }
     }
 
-    _animateHotspots();
     renderer.render(scene, camera);
 }
 
-// ── Fin de session : retour au viewer 3D ─────────────────────────────────────
+// ── Fin de session ────────────────────────────────────────────────────────────
 
 function _onXRSessionEnd() {
     renderer.setAnimationLoop(null);
     renderer.xr.enabled = false;
 
-    // Nettoyage ressources XR
     xrHitTestSource?.cancel?.();
     xrHitTestSource = null;
     if (xrReticle)    { scene.remove(xrReticle);    xrReticle    = null; }
     if (xrController) { scene.remove(xrController); xrController = null; }
 
-    // Restaurer le robot dans son état viewer 3D
+    clearMeshSelection();
+
     if (robotGroup) {
         robotGroup.visible = true;
         robotGroup.scale.setScalar(1);
         robotGroup.position.set(0, 2.1, 0);
         robotGroup.rotation.set(0, 0, Math.PI / 2);
     }
-    // Remettre les hotspots à leur taille normale
-    hotspotMeshes.forEach(h => h.scale.setScalar(1));
 
     if (gridHelper)   gridHelper.visible   = true;
     if (floorMeshRef) floorMeshRef.visible = true;
     if (scene)        scene.fog = new THREE.FogExp2(0x0d0d1a, 0.03);
     if (controls)     controls.enabled     = true;
 
-    // Masquer le viseur AR
     const crosshair = document.getElementById('ar-crosshair');
     if (crosshair) crosshair.style.display = 'none';
 
