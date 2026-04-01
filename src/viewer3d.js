@@ -299,9 +299,27 @@ function _onCanvasClick(e) {
         const h = hits[0].object;
         if (h.userData.part && onHotspotClick) {
             _flashHotspot(h);
-            onHotspotClick(h.userData.part);
+            // Projeter la position monde du hotspot en coordonnées écran
+            const worldPos = new THREE.Vector3();
+            h.getWorldPosition(worldPos);
+            const screenPos = _worldToScreen(worldPos, camera);
+            onHotspotClick(h.userData.part, screenPos);
         }
     }
+}
+
+/**
+ * Projette une position 3D monde en coordonnées 2D écran (pixels CSS).
+ * @param {THREE.Vector3} worldPos  - Position dans l'espace monde Three.js
+ * @param {THREE.Camera}  cam       - Caméra active (viewer ou XR)
+ * @returns {{ x: number, y: number }}
+ */
+function _worldToScreen(worldPos, cam) {
+    const ndc = worldPos.clone().project(cam);
+    return {
+        x: ( ndc.x * 0.5 + 0.5) * window.innerWidth,
+        y: (-ndc.y * 0.5 + 0.5) * window.innerHeight
+    };
 }
 
 function _onMouseMove(e) {
@@ -521,10 +539,16 @@ function _onXRTap() {
     if (!xrRobotPlaced) {
         // 1er tap : poser le robot sur la surface détectée
         if (xrReticle?.visible) _placeRobotXR();
-    } else {
-        // Robot déjà posé : tester clic sur hotspot
-        _checkXRHotspotHit();
+        return;
     }
+
+    // Si un panneau UI est déjà ouvert, le tap sert à fermer via le DOM —
+    // on ne déclenche PAS de détection de hotspot pour éviter de le rouvrir.
+    const panelOpen = document.querySelector('#info-panel.active, #chat-panel.active');
+    if (panelOpen) return;
+
+    // Aucun panneau ouvert : chercher un hotspot dans la direction de visée
+    _checkXRHotspotHit();
 }
 
 /**
@@ -604,7 +628,12 @@ function _checkXRHotspotHit() {
 
     if (bestHotspot && onHotspotClick) {
         _flashHotspot(bestHotspot);
-        onHotspotClick(bestHotspot.userData.part);
+        // Projeter le hotspot en coordonnées écran pour positionner le panneau
+        const worldPos = new THREE.Vector3();
+        bestHotspot.getWorldPosition(worldPos);
+        const xrCam   = renderer.xr.getCamera();
+        const screenPos = _worldToScreen(worldPos, xrCam);
+        onHotspotClick(bestHotspot.userData.part, screenPos);
     }
 }
 

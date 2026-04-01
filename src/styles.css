@@ -239,10 +239,14 @@ body {
 /* ════════════════════════════════════════════════════════════════════
    Panneau fiche technique
    ════════════════════════════════════════════════════════════════════ */
+
+/* ── Mode par défaut : glisse depuis la gauche ───────────────────── */
 #info-panel {
     position: fixed;
     top: 50%; left: 0;
     transform: translateY(-50%) translateX(-110%);
+    opacity: 0;
+    pointer-events: none;
     width: 340px;
     max-height: 80vh;
     background: rgba(12,12,20,0.92);
@@ -251,13 +255,32 @@ body {
     border: 1px solid rgba(255,255,255,0.06);
     border-left: none;
     box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity   0.3s ease;
     z-index: 200;
     overflow: hidden;
     display: flex;
     flex-direction: column;
 }
-#info-panel.active { transform: translateY(-50%) translateX(0); }
+#info-panel.active {
+    transform: translateY(-50%) translateX(0);
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* ── Mode contextuel : positionné par JS près du hotspot ─────────── */
+/* top / left / transform-origin sont injectés en inline style par JS. */
+#info-panel.contextual {
+    top: auto; left: auto;          /* le JS surcharge ces valeurs */
+    border-radius: 20px;            /* rayon complet (peut s'ouvrir de n'importe quel côté) */
+    border-left: 1px solid rgba(255,255,255,0.06);
+    transform: scale(0.88);         /* état caché : légèrement rétréci */
+}
+#info-panel.contextual.active {
+    transform: scale(1);            /* état visible : pleine taille */
+    opacity: 1;
+    pointer-events: all;
+}
 
 .panel-header {
     padding: 24px 24px 16px;
@@ -279,14 +302,23 @@ body {
 }
 .close-btn {
     position: absolute;
-    top: 16px; right: 18px;
+    top: 8px; right: 10px;
+    /* Zone tactile généreuse (44×44 px minimum recommandé) */
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
     background: none; border: none;
     color: #fff; font-size: 22px;
-    cursor: pointer; opacity: 0.4;
+    cursor: pointer; opacity: 0.5;
     transition: opacity 0.2s;
     line-height: 1;
+    /* S'assure que le bouton est toujours cliquable, même en mode AR */
+    pointer-events: auto;
+    z-index: 10;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
-.close-btn:hover { opacity: 1; }
+.close-btn:hover  { opacity: 1; }
+.close-btn:active { opacity: 1; background: rgba(255,255,255,0.1); border-radius: 50%; }
 #panel-title { font-size: 18px; font-weight: 600; color: #fff; margin: 0; }
 .badge {
     display: inline-block;
@@ -424,9 +456,16 @@ body {
 .chat-header button {
     background: none; border: none; color: #fff;
     font-size: 20px; cursor: pointer;
-    opacity: 0.4; transition: opacity 0.2s;
+    opacity: 0.5; transition: opacity 0.2s;
+    /* Zone tactile généreuse */
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
-.chat-header button:hover { opacity: 1; }
+.chat-header button:hover  { opacity: 1; }
+.chat-header button:active { opacity: 1; background: rgba(255,255,255,0.08); border-radius: 50%; }
 
 .chat-context {
     padding: 8px 20px;
@@ -555,11 +594,14 @@ body {
         top: auto; bottom: 0; left: 0; right: 0;
         width: 100%; max-height: 55vh;
         transform: translateY(110%);
+        opacity: 1;             /* bottom-sheet : pas de fondu, seulement le glissement */
+        pointer-events: auto;   /* toujours interactif même avant .active */
         border-radius: 20px 20px 0 0;
         border: 1px solid rgba(255,255,255,0.06);
         border-bottom: none;
     }
-    #info-panel.active { transform: translateY(0); }
+    #info-panel.active,
+    #info-panel.contextual.active { transform: translateY(0); }
 
     #chat-panel { left: 10px; right: 10px; bottom: 10px; width: auto; }
     #ui-overlay h1  { font-size: 14px; }

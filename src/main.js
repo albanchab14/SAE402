@@ -91,8 +91,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── Viewer Three.js ────────────────────────────────────────────────────────
     setLoading(60, 'Initialisation viewer 3D...');
     const viewerCanvas = document.getElementById('viewer-canvas');
-    initViewer(viewerCanvas, parts, async part => {
-        await showPartInfo(part);
+    initViewer(viewerCanvas, parts, async (part, screenPos) => {
+        await showPartInfo(part, screenPos);
         logInteraction('hotspot_click', part.id, { name: part.name });
     });
 
@@ -199,16 +199,70 @@ function _setIndicator(active, text) {
 // Panneau fiche technique
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Ferme le panneau fiche technique et réinitialise son positionnement.
+ */
+function _closeInfoPanel() {
+    const panel = document.getElementById('info-panel');
+    panel.classList.remove('active', 'contextual');
+    // Effacer les inline styles éventuellement posés par _positionPanel
+    panel.style.left            = '';
+    panel.style.top             = '';
+    panel.style.transformOrigin = '';
+    currentPart = null;
+    // En mode AR : réafficher le viseur quand on ferme la fiche technique
+    if (xrActive) {
+        const crosshair = document.getElementById('ar-crosshair');
+        if (crosshair) crosshair.style.display = 'block';
+    }
+}
+
+/**
+ * Positionne le panneau fiche technique près du hotspot cliqué.
+ * Actif uniquement sur desktop (largeur > 768 px).
+ * Logique de placement intelligent :
+ *   - Horizontal : à droite du hotspot si la place le permet, sinon à gauche
+ *   - Vertical   : centré sur le hotspot, borné aux marges de la fenêtre
+ *
+ * @param {{ x: number, y: number }} screenPos - Coordonnées CSS du hotspot
+ */
+function _positionPanel(screenPos) {
+    const panel     = document.getElementById('info-panel');
+    const PANEL_W   = 340;
+    const PANEL_H   = Math.min(window.innerHeight * 0.8, 560); // hauteur estimée
+    const MARGIN    = 18;
+
+    let x, y, origin;
+
+    // ── Horizontal ────────────────────────────────────────────────────────────
+    const spaceRight = window.innerWidth - (screenPos.x + MARGIN + PANEL_W);
+    if (spaceRight >= 0) {
+        // Assez de place à droite du hotspot
+        x      = screenPos.x + MARGIN;
+        origin = 'left center';
+    } else {
+        // Trop proche du bord droit → panneau à gauche du hotspot
+        x      = screenPos.x - MARGIN - PANEL_W;
+        origin = 'right center';
+        // Si même à gauche il déborde (hotspot tout à gauche), coller à la marge
+        if (x < MARGIN) { x = MARGIN; origin = 'left center'; }
+    }
+
+    // ── Vertical ──────────────────────────────────────────────────────────────
+    y = screenPos.y - PANEL_H / 2;
+    y = Math.max(MARGIN, Math.min(y, window.innerHeight - PANEL_H - MARGIN));
+
+    // ── Appliquer ─────────────────────────────────────────────────────────────
+    panel.style.left            = x + 'px';
+    panel.style.top             = y + 'px';
+    panel.style.transformOrigin = origin;
+    panel.classList.add('contextual');
+}
+
 /** Branche les événements du panneau fiche technique. */
 function setupInfoPanel() {
     document.querySelector('#info-panel .close-btn').addEventListener('click', () => {
-        document.getElementById('info-panel').classList.remove('active');
-        currentPart = null;
-        // En mode AR : réafficher le viseur quand on ferme la fiche technique
-        if (xrActive) {
-            const crosshair = document.getElementById('ar-crosshair');
-            if (crosshair) crosshair.style.display = 'block';
-        }
+        _closeInfoPanel();
     });
 
     document.querySelectorAll('#info-panel .tab').forEach(tab => {
@@ -227,9 +281,12 @@ function setupInfoPanel() {
 
 /**
  * Remplit et affiche le panneau fiche technique pour un composant.
- * @param {Object} part - données minimales du composant
+ * Sur desktop, positionne le panneau près du hotspot cliqué (coordonnées écran).
+ *
+ * @param {Object}                     part      - données minimales du composant
+ * @param {{ x: number, y: number }|null} screenPos - position écran du hotspot (null = défaut gauche)
  */
-async function showPartInfo(part) {
+async function showPartInfo(part, screenPos = null) {
     currentPart = part;
 
     let fullPart = part;
@@ -277,12 +334,23 @@ async function showPartInfo(part) {
             <tr><td>35 000 h</td><td>Remplacer Wrist 3 (réf 102414)</td></tr>
         </table>`;
 
-    // Revenir à l'onglet Général et afficher
+    // Revenir à l'onglet Général
     document.querySelectorAll('#info-panel .tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('#info-panel .tab-content').forEach(c => c.classList.remove('active'));
     document.querySelector('#info-panel .tab[data-tab="general"]').classList.add('active');
     document.getElementById('tab-general').classList.add('active');
-    document.getElementById('info-panel').classList.add('active');
+
+    // ── Positionnement contextuel (desktop uniquement) ────────────────────────
+    // Sur mobile (≤768 px) la fiche remonte depuis le bas (CSS) — pas de repositionnement JS.
+    const panel = document.getElementById('info-panel');
+    panel.classList.remove('contextual');    // reset d'une éventuelle ouverture précédente
+    panel.style.left = panel.style.top = panel.style.transformOrigin = '';
+
+    if (screenPos && window.innerWidth > 768) {
+        _positionPanel(screenPos);
+    }
+
+    panel.classList.add('active');
 
     // En mode AR : masquer le viseur pendant que la fiche est ouverte
     if (xrActive) {
