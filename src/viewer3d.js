@@ -103,21 +103,24 @@ export function initViewer(canvasEl, parts = [], clickCb = null) {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
-    renderer.setClearColor(0x0d0d1a, 1);
+    // Fond bleu nuit très profond
+    renderer.setClearColor(0x060b14, 1);
     renderer.xr.enabled = false;
 
     // ── Scène ─────────────────────────────────────────────────────────────────
     scene     = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x0d0d1a, 0.03);
+    scene.fog = new THREE.FogExp2(0x060b14, 0.025);
 
     // ── Caméra ────────────────────────────────────────────────────────────────
     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 100);
     camera.position.set(2.5, 1.5, 6);
 
     // ── Lumières ──────────────────────────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0x8899ff, 0.7));
+    // Ambiance générale : bleu froid subtil
+    scene.add(new THREE.AmbientLight(0x9ab8e8, 0.55));
 
-    const dir = new THREE.DirectionalLight(0xffffff, 1.6);
+    // Lumière principale (key light) : blanc légèrement chaud, forte
+    const dir = new THREE.DirectionalLight(0xfafcff, 2.0);
     dir.position.set(4, 6, 4);
     dir.castShadow = true;
     dir.shadow.mapSize.set(2048, 2048);
@@ -125,21 +128,26 @@ export function initViewer(canvasEl, parts = [], clickCb = null) {
     dir.shadow.camera.left = -5;  dir.shadow.camera.right = 5;
     dir.shadow.camera.top  =  5;  dir.shadow.camera.bottom = -5;
     scene.add(dir);
-    scene.add(new THREE.DirectionalLight(0x6366f1, 0.5).position.set(-4, 2, -3) && dir);
-    scene.add(new THREE.PointLight(0xa855f7, 0.7, 15).position.set(0, 5, 0) && dir);
 
-    // (lumières accent + top séparément pour éviter l'écrasement de ref)
-    const accent = new THREE.DirectionalLight(0x6366f1, 0.5);
-    accent.position.set(-4, 2, -3);
-    scene.add(accent);
-    const topLight = new THREE.PointLight(0xa855f7, 0.7, 15);
-    topLight.position.set(0, 5, 0);
+    // Lumière de contre (back/rim) : bleu électrique pour le contour du robot
+    const rimLight = new THREE.DirectionalLight(0x3b82f6, 1.1);
+    rimLight.position.set(-5, 3, -4);
+    scene.add(rimLight);
+
+    // Lumière de remplissage (fill) : bleu ciel doux, dessous
+    const fillLight = new THREE.PointLight(0x60a5fa, 0.8, 20);
+    fillLight.position.set(0, -1, 3);
+    scene.add(fillLight);
+
+    // Lumière zénithale : bleu très pâle, pour les reflets du dessus
+    const topLight = new THREE.PointLight(0xbfdbfe, 0.5, 18);
+    topLight.position.set(0, 8, 0);
     scene.add(topLight);
 
     // ── Sol + grille ──────────────────────────────────────────────────────────
-    gridHelper = new THREE.GridHelper(12, 24, 0x6366f1, 0x1a1a3a);
+    gridHelper = new THREE.GridHelper(14, 28, 0x3b82f6, 0x0d1f3c);
     gridHelper.position.y = -2;
-    gridHelper.material.opacity = 0.2;
+    gridHelper.material.opacity = 0.25;
     gridHelper.material.transparent = true;
     scene.add(gridHelper);
 
@@ -379,10 +387,10 @@ export function updateHotspots(parts) {
  */
 export function setViewerMode(transparent) {
     if (!renderer) return;
-    renderer.setClearColor(0x0d0d1a, transparent ? 0 : 1);
+    renderer.setClearColor(0x060b14, transparent ? 0 : 1);
     if (gridHelper)   gridHelper.visible   = !transparent;
     if (floorMeshRef) floorMeshRef.visible = !transparent;
-    if (scene)        scene.fog = transparent ? null : new THREE.FogExp2(0x0d0d1a, 0.03);
+    if (scene)        scene.fog = transparent ? null : new THREE.FogExp2(0x060b14, 0.025);
 }
 
 /** Stoppe et nettoie le viewer. */
@@ -575,7 +583,7 @@ function _onXRSessionEnd() {
 
     if (gridHelper)   gridHelper.visible   = true;
     if (floorMeshRef) floorMeshRef.visible = true;
-    if (scene)        scene.fog = new THREE.FogExp2(0x0d0d1a, 0.03);
+    if (scene)        scene.fog = new THREE.FogExp2(0x0a0a0a, 0.03);
     if (controls)     controls.enabled     = true;
 
     const crosshair = document.getElementById('ar-crosshair');

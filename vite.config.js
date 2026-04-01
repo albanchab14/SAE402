@@ -4,7 +4,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 export default defineConfig({
   plugins: [basicSsl()],
   server: {
-    port: 3000,
+    port: parseInt(process.env.PORT || '3000'),
     https: true,  // HTTPS auto-signe — necessaire pour camera AR sur mobile
     host: true,   // Expose sur le reseau local (0.0.0.0)
     proxy: {

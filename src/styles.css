@@ -1,7 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════
-   MARA — Styles globaux
-   Thème sombre : #0d0d1a | Accent : #6366f1 (indigo) #a855f7 (violet)
-   Glassmorphism : backdrop-filter: blur() + rgba semi-transparents
+   MARA — Design System
+   Palette : Noir #0a0a0a | Blanc #ffffff | Gris #f4f4f4 / #e8e8e8
+             Bleu accent #3b82f6 | Bleu foncé #1d4ed8
+   Inspiré iDraft : minimalisme noir & blanc + touches bleues
    ═══════════════════════════════════════════════════════════════════ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -9,8 +10,8 @@
 body {
     overflow: hidden;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: #fff;
-    background: #0d0d1a;
+    color: #0a0a0a;
+    background: #0a0a0a;
 }
 
 /* ── Canvas Three.js ─────────────────────────────────────────────── */
@@ -27,16 +28,17 @@ body {
 #viewer-hint {
     position: fixed;
     bottom: 80px; right: 20px;
-    background: rgba(12,12,20,0.85);
+    background: rgba(255,255,255,0.92);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.06);
+    border: 1px solid #e8e8e8;
     border-radius: 12px;
     padding: 12px 16px;
     font-size: 11px;
-    color: rgba(255,255,255,0.4);
+    color: #888;
     z-index: 100;
     line-height: 1.8;
     pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
 }
 
 /* ── Overlay titre + badge (haut gauche) ─────────────────────────── */
@@ -47,81 +49,93 @@ body {
     z-index: 100;
 }
 #ui-overlay h1 {
-    font-size: 18px;
-    font-weight: 300;
+    font-size: 17px;
+    font-weight: 700;
     letter-spacing: 3px;
     text-transform: uppercase;
-    background: linear-gradient(90deg, #6366f1, #a855f7);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #ffffff;
 }
 .status-badge {
-    display: inline-block;
-    margin-top: 6px;
-    padding: 3px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 4px 12px;
     border-radius: 20px;
-    background: rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.95);
     backdrop-filter: blur(8px);
     font-size: 11px;
-    letter-spacing: 0.5px;
-    border: 1px solid rgba(255,255,255,0.08);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    color: #0a0a0a;
+    border: 1px solid #e8e8e8;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
-.status-badge.connected { color: #10b981; border-color: rgba(16,185,129,0.3); }
-.status-badge.ar-active  { color: #6366f1; border-color: rgba(99,102,241,0.3); }
-.status-badge.offline    { color: #f59e0b; border-color: rgba(245,158,11,0.3); }
+.status-badge::before {
+    content: '';
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #d4d4d4;
+    flex-shrink: 0;
+}
+.status-badge.connected::before { background: #22c55e; }
+.status-badge.ar-active::before  { background: #3b82f6; }
+.status-badge.offline::before    { background: #f59e0b; }
 
 /* ── Bouton bascule AR / Viewer (haut droite) ────────────────────── */
 #mode-toggle {
     position: fixed;
     top: 16px; right: 16px;
     z-index: 100;
-    padding: 8px 16px;
+    padding: 9px 18px;
     border-radius: 10px;
-    background: rgba(255,255,255,0.08);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: #fff;
+    background: #111111;
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #ffffff;
     font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
     cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
+    transition: background 0.2s;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
-#mode-toggle:hover { background: rgba(255,255,255,0.14); }
+#mode-toggle:hover { background: #222222; }
 
 /* ── Indicateur statut (bas droite) ─────────────────────────────── */
 #marker-indicator {
     position: fixed;
     bottom: 24px; right: 24px;
-    padding: 8px 14px;
+    padding: 7px 14px;
     border-radius: 20px;
-    background: rgba(0,0,0,0.5);
+    background: rgba(255,255,255,0.95);
     backdrop-filter: blur(10px);
     font-size: 11px;
+    font-weight: 500;
+    color: #0a0a0a;
     z-index: 100;
-    border: 1px solid rgba(255,255,255,0.06);
+    border: 1px solid #e8e8e8;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
     display: flex;
     align-items: center;
     gap: 8px;
 }
 .indicator-dot {
-    width: 8px; height: 8px;
+    width: 7px; height: 7px;
     border-radius: 50%;
-    background: #ef4444;
+    background: #d4d4d4;
     transition: background 0.3s;
 }
 .indicator-dot.found {
-    background: #10b981;
+    background: #22c55e;
     animation: pulse-dot 1.5s infinite;
 }
 @keyframes pulse-dot {
-    0%, 100% { box-shadow: 0 0 0 0   rgba(16,185,129,0.4); }
-    50%       { box-shadow: 0 0 0 6px rgba(16,185,129,0);   }
+    0%, 100% { box-shadow: 0 0 0 0   rgba(34,197,94,0.4); }
+    50%       { box-shadow: 0 0 0 6px rgba(34,197,94,0);   }
 }
 
 /* ════════════════════════════════════════════════════════════════════
    WebXR DOM Overlay
-   Affiché par-dessus le flux caméra AR natif (WebXR dom-overlay).
-   Masqué par défaut ; visible avec la classe .active.
    ════════════════════════════════════════════════════════════════════ */
 #ar-overlay {
     display: none;
@@ -132,24 +146,24 @@ body {
 }
 #ar-overlay.active { display: block; }
 
-/* Instructions de placement (avant que le robot soit posé) */
 #ar-hint {
     position: absolute;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
-    background: rgba(12,12,20,0.78);
+    background: rgba(255,255,255,0.95);
     backdrop-filter: blur(14px);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid #e8e8e8;
     border-radius: 18px;
     padding: 22px 30px;
-    color: rgba(255,255,255,0.9);
+    color: #0a0a0a;
     font-size: 14px;
     line-height: 1.8;
     pointer-events: none;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
     animation: fade-pulse 2s ease-in-out infinite;
 }
-#ar-hint strong { color: #a855f7; }
+#ar-hint strong { color: #1d4ed8; font-weight: 700; }
 .ar-hint-icon {
     font-size: 36px;
     margin-bottom: 12px;
@@ -159,27 +173,24 @@ body {
     50%       { opacity: 1;    }
 }
 
-/* Bouton quitter AR */
 #ar-quit-btn {
     position: absolute;
     top: 20px; right: 20px;
     padding: 10px 18px;
     border-radius: 12px;
-    background: rgba(239,68,68,0.18);
+    background: rgba(255,255,255,0.95);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(239,68,68,0.4);
-    color: #fca5a5;
+    border: 1px solid #e8e8e8;
+    color: #ef4444;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     pointer-events: auto;
     transition: background 0.2s;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
 }
-#ar-quit-btn:hover { background: rgba(239,68,68,0.32); }
+#ar-quit-btn:hover { background: #fff5f5; }
 
-/* ── Viseur AR ────────────────────────────────────────────────────────────────
-   Affiché au centre de l'écran après placement du robot.
-   L'utilisateur centre un hotspot dans le viseur puis tape pour l'ouvrir.           */
 #ar-crosshair {
     position: absolute;
     top: 50%; left: 50%;
@@ -193,8 +204,8 @@ body {
 .crosshair-ring {
     width: 48px; height: 48px;
     border-radius: 50%;
-    border: 2px solid rgba(99,102,241,0.9);
-    box-shadow: 0 0 12px rgba(99,102,241,0.5), inset 0 0 8px rgba(99,102,241,0.2);
+    border: 2px solid rgba(59,130,246,0.95);
+    box-shadow: 0 0 14px rgba(59,130,246,0.45), inset 0 0 8px rgba(59,130,246,0.15);
     animation: crosshair-pulse 1.8s ease-in-out infinite;
 }
 .crosshair-dot {
@@ -203,38 +214,33 @@ body {
     transform: translate(-50%, -50%);
     width: 6px; height: 6px;
     border-radius: 50%;
-    background: #6366f1;
-    box-shadow: 0 0 6px #6366f1;
+    background: #3b82f6;
+    box-shadow: 0 0 8px #3b82f6;
 }
 .crosshair-label {
     font-size: 11px;
-    color: rgba(255,255,255,0.7);
-    background: rgba(12,12,20,0.6);
+    font-weight: 500;
+    color: #0a0a0a;
+    background: rgba(255,255,255,0.95);
     backdrop-filter: blur(8px);
     padding: 4px 10px;
     border-radius: 8px;
     letter-spacing: 0.3px;
     white-space: nowrap;
     margin-top: 8px;
+    border: 1px solid #e8e8e8;
 }
 @keyframes crosshair-pulse {
     0%, 100% { transform: scale(1);    opacity: 0.8; }
     50%       { transform: scale(1.15); opacity: 1;   }
 }
 
-/* En AR, le panneau info glisse depuis le bas (mobile) même en paysage */
 #ar-overlay.active ~ #info-panel,
-#info-panel {
-    z-index: 600; /* au-dessus du canvas XR */
-}
+#info-panel { z-index: 600; }
 #ar-overlay.active ~ #chat-panel,
-#chat-panel {
-    z-index: 700;
-}
+#chat-panel { z-index: 700; }
 #ar-overlay.active ~ #chat-toggle,
-#chat-toggle {
-    z-index: 700;
-}
+#chat-toggle { z-index: 700; }
 
 /* ════════════════════════════════════════════════════════════════════
    Panneau fiche technique
@@ -249,12 +255,11 @@ body {
     pointer-events: none;
     width: 340px;
     max-height: 80vh;
-    background: rgba(12,12,20,0.92);
-    backdrop-filter: blur(24px);
+    background: #ffffff;
     border-radius: 0 20px 20px 0;
-    border: 1px solid rgba(255,255,255,0.06);
+    border: 1px solid #e8e8e8;
     border-left: none;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.14);
     transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
                 opacity   0.3s ease;
     z-index: 200;
@@ -268,50 +273,49 @@ body {
     pointer-events: all;
 }
 
-/* ── Mode contextuel : positionné par JS près du hotspot ─────────── */
-/* top / left / transform-origin sont injectés en inline style par JS. */
+/* ── Mode contextuel ─────────────────────────────────────────────── */
 #info-panel.contextual {
-    top: auto; left: auto;          /* le JS surcharge ces valeurs */
-    border-radius: 20px;            /* rayon complet (peut s'ouvrir de n'importe quel côté) */
-    border-left: 1px solid rgba(255,255,255,0.06);
-    transform: scale(0.88);         /* état caché : légèrement rétréci */
+    top: auto; left: auto;
+    border-radius: 20px;
+    border-left: 1px solid #e8e8e8;
+    transform: scale(0.88);
 }
 #info-panel.contextual.active {
-    transform: scale(1);            /* état visible : pleine taille */
+    transform: scale(1);
     opacity: 1;
     pointer-events: all;
 }
 
 .panel-header {
-    padding: 24px 24px 16px;
+    padding: 22px 22px 16px;
     position: relative;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid #f0f0f0;
     display: flex;
     align-items: flex-start;
     gap: 14px;
+    background: #0a0a0a;
 }
 .part-icon {
     width: 40px; height: 40px;
     border-radius: 10px;
-    background: rgba(99,102,241,0.15);
+    background: rgba(255,255,255,0.1);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 18px;
     flex-shrink: 0;
+    color: #ffffff;
 }
 .close-btn {
     position: absolute;
     top: 8px; right: 10px;
-    /* Zone tactile généreuse (44×44 px minimum recommandé) */
     width: 44px; height: 44px;
     display: flex; align-items: center; justify-content: center;
     background: none; border: none;
-    color: #fff; font-size: 22px;
-    cursor: pointer; opacity: 0.5;
+    color: rgba(255,255,255,0.6); font-size: 22px;
+    cursor: pointer; opacity: 0.7;
     transition: opacity 0.2s;
     line-height: 1;
-    /* S'assure que le bouton est toujours cliquable, même en mode AR */
     pointer-events: auto;
     z-index: 10;
     -webkit-tap-highlight-color: transparent;
@@ -319,97 +323,115 @@ body {
 }
 .close-btn:hover  { opacity: 1; }
 .close-btn:active { opacity: 1; background: rgba(255,255,255,0.1); border-radius: 50%; }
-#panel-title { font-size: 18px; font-weight: 600; color: #fff; margin: 0; }
+
+#panel-title {
+    font-size: 17px; font-weight: 700;
+    color: #ffffff; margin: 0;
+    line-height: 1.2;
+}
 .badge {
     display: inline-block;
-    margin-top: 4px;
-    font-size: 10px;
+    margin-top: 6px;
+    font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 2px;
-    color: #a855f7;
-    padding: 2px 8px;
+    color: rgba(255,255,255,0.5);
+    padding: 3px 8px;
     border-radius: 4px;
-    background: rgba(168,85,247,0.1);
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.12);
 }
 
 /* Onglets */
 .tabs {
     display: flex;
-    padding: 0 24px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 0 20px;
+    border-bottom: 1px solid #f0f0f0;
+    background: #ffffff;
 }
 .tab {
     flex: 1;
-    padding: 10px 4px;
+    padding: 11px 4px;
     background: none; border: none;
-    color: rgba(255,255,255,0.4);
+    color: #aaaaaa;
     font-size: 11px;
+    font-weight: 500;
     cursor: pointer;
     border-bottom: 2px solid transparent;
     transition: all 0.2s;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
-.tab:hover  { color: rgba(255,255,255,0.7); }
-.tab.active { color: #a855f7; border-bottom-color: #a855f7; }
+.tab:hover  { color: #555555; }
+.tab.active { color: #1d4ed8; border-bottom-color: #3b82f6; }
 
 .tab-content {
     display: none;
-    padding: 20px 24px;
+    padding: 20px 22px;
     flex: 1;
     overflow-y: auto;
     font-size: 13px;
     line-height: 1.7;
-    color: rgba(255,255,255,0.75);
+    color: #444444;
+    background: #ffffff;
 }
 .tab-content.active { display: block; }
-.tab-content::-webkit-scrollbar { width: 4px; }
-.tab-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+.tab-content::-webkit-scrollbar { width: 3px; }
+.tab-content::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 3px; }
 
 /* Tableau specs */
 .specs-table { width: 100%; border-collapse: collapse; }
-.specs-table tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
-.spec-key { padding: 8px 8px 8px 0; color: rgba(255,255,255,0.4); font-size: 12px; white-space: nowrap; vertical-align: top; }
-.spec-val { padding: 8px 0; color: #fff; font-size: 12px; }
+.specs-table tr { border-bottom: 1px solid #f4f4f4; }
+.spec-key {
+    padding: 8px 10px 8px 0;
+    color: #999999;
+    font-size: 11px;
+    white-space: nowrap;
+    vertical-align: top;
+    font-weight: 500;
+}
+.spec-val { padding: 8px 0; color: #0a0a0a; font-size: 12px; font-weight: 500; }
 
 /* Documents */
 .doc-card {
-    background: rgba(255,255,255,0.03);
-    border-radius: 10px;
+    background: #f9f9f9;
+    border-radius: 12px;
     padding: 14px;
     margin-bottom: 10px;
-    border: 1px solid rgba(255,255,255,0.04);
+    border: 1px solid #f0f0f0;
 }
 .doc-type {
     display: inline-block;
     font-size: 9px;
-    padding: 2px 6px;
-    background: rgba(99,102,241,0.2);
-    color: #818cf8;
+    padding: 2px 7px;
+    background: #1d4ed8;
+    color: #ffffff;
     border-radius: 4px;
     margin-bottom: 6px;
     letter-spacing: 1px;
+    font-weight: 600;
 }
-.doc-title   { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
-.doc-content { font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5; }
+.doc-title   { font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #0a0a0a; }
+.doc-content { font-size: 12px; color: #888888; line-height: 1.5; }
 
 /* Maintenance */
 .maintenance-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.maintenance-table td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
-.maintenance-table td:first-child { color: #a855f7; white-space: nowrap; }
+.maintenance-table td { padding: 7px 8px; border-bottom: 1px solid #f4f4f4; color: #444; }
+.maintenance-table td:first-child { color: #0a0a0a; font-weight: 600; white-space: nowrap; }
 
 /* Bouton Poser une question à l'IA */
 #ask-ai-btn {
-    margin: 16px 24px 20px;
-    padding: 10px 16px;
-    background: linear-gradient(135deg, #6366f1, #a855f7);
-    border: none; border-radius: 10px;
-    color: #fff; font-size: 13px; font-weight: 500;
+    margin: 14px 20px 18px;
+    padding: 12px 16px;
+    background: #0a0a0a;
+    border: none; border-radius: 12px;
+    color: #ffffff; font-size: 13px; font-weight: 600;
     cursor: pointer;
-    transition: opacity 0.2s;
-    width: calc(100% - 48px);
+    transition: background 0.2s;
+    width: calc(100% - 40px);
+    letter-spacing: 0.2px;
 }
-#ask-ai-btn:hover { opacity: 0.85; }
+#ask-ai-btn:hover { background: #222222; }
 
 /* ════════════════════════════════════════════════════════════════════
    Panneau chat assistant IA
@@ -419,26 +441,25 @@ body {
     bottom: 24px; left: 24px;
     width: 52px; height: 52px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #6366f1, #a855f7);
+    background: #0a0a0a;
     border: none; color: #fff;
     font-size: 22px; cursor: pointer;
-    box-shadow: 0 4px 20px rgba(99,102,241,0.4);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     z-index: 200;
     display: flex; align-items: center; justify-content: center;
-    transition: transform 0.2s, opacity 0.3s;
+    transition: transform 0.2s, opacity 0.3s, background 0.2s;
 }
-#chat-toggle:hover { transform: scale(1.08); }
+#chat-toggle:hover { background: #222222; transform: scale(1.06); }
 #chat-toggle.hidden { opacity: 0; pointer-events: none; }
 
 #chat-panel {
     position: fixed;
     bottom: 20px; left: 20px;
     width: 360px; max-height: 500px;
-    background: rgba(12,12,20,0.95);
-    backdrop-filter: blur(24px);
+    background: #ffffff;
     border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.06);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    border: 1px solid #e8e8e8;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.14);
     z-index: 300;
     display: flex; flex-direction: column;
     transform: translateY(20px); opacity: 0;
@@ -450,14 +471,18 @@ body {
 .chat-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid #f0f0f0;
+    background: #0a0a0a;
+    border-radius: 20px 20px 0 0;
 }
-.chat-header span   { font-size: 14px; font-weight: 500; }
+.chat-header span {
+    font-size: 14px; font-weight: 600;
+    color: #ffffff;
+}
 .chat-header button {
-    background: none; border: none; color: #fff;
+    background: none; border: none; color: rgba(255,255,255,0.6);
     font-size: 20px; cursor: pointer;
-    opacity: 0.5; transition: opacity 0.2s;
-    /* Zone tactile généreuse */
+    opacity: 0.7; transition: opacity 0.2s;
     width: 44px; height: 44px;
     display: flex; align-items: center; justify-content: center;
     pointer-events: auto;
@@ -465,14 +490,16 @@ body {
     touch-action: manipulation;
 }
 .chat-header button:hover  { opacity: 1; }
-.chat-header button:active { opacity: 1; background: rgba(255,255,255,0.08); border-radius: 50%; }
+.chat-header button:active { opacity: 1; background: rgba(255,255,255,0.1); border-radius: 50%; }
 
 .chat-context {
     padding: 8px 20px;
     font-size: 11px;
-    color: rgba(255,255,255,0.3);
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-weight: 500;
+    color: #999999;
+    letter-spacing: 0.3px;
+    border-bottom: 1px solid #f4f4f4;
+    background: #f9f9f9;
 }
 
 #chat-messages {
@@ -481,134 +508,153 @@ body {
     overflow-y: auto;
     min-height: 200px;
     max-height: 280px;
+    background: #ffffff;
 }
 #chat-messages::-webkit-scrollbar { width: 3px; }
-#chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+#chat-messages::-webkit-scrollbar-thumb { background: #e8e8e8; border-radius: 3px; }
 
 .chat-msg {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     padding: 10px 14px;
     border-radius: 12px;
     font-size: 13px;
     line-height: 1.5;
-    max-width: 90%;
+    max-width: 88%;
     word-wrap: break-word;
 }
-.chat-msg.user  { background: rgba(99,102,241,0.2); margin-left: auto; text-align: right; border-bottom-right-radius: 4px; }
-.chat-msg.ai    { background: rgba(255,255,255,0.05); border-bottom-left-radius: 4px; color: rgba(255,255,255,0.8); }
-.chat-msg.ai.error  { color: #f87171; }
-.chat-msg.typing    { color: rgba(255,255,255,0.4); letter-spacing: 4px; animation: blink-dots 1.2s steps(3, end) infinite; }
+.chat-msg.user  {
+    background: #0a0a0a;
+    color: #ffffff;
+    margin-left: auto;
+    text-align: right;
+    border-bottom-right-radius: 4px;
+}
+.chat-msg.ai    {
+    background: #f4f4f4;
+    color: #0a0a0a;
+    border-bottom-left-radius: 4px;
+}
+.chat-msg.ai.error  { color: #ef4444; background: #fff5f5; }
+.chat-msg.typing    {
+    color: #aaaaaa;
+    letter-spacing: 4px;
+    animation: blink-dots 1.2s steps(3, end) infinite;
+    background: #f4f4f4;
+}
 @keyframes blink-dots {
     0%   { opacity: 0.3; }
     50%  { opacity: 1;   }
     100% { opacity: 0.3; }
 }
 
-#chat-faq { padding: 0 20px 8px; }
+#chat-faq { padding: 0 20px 8px; background: #ffffff; }
 .faq-label {
     font-size: 10px;
-    color: rgba(255,255,255,0.25);
+    color: #bbbbbb;
     margin-bottom: 6px;
     text-transform: uppercase;
     letter-spacing: 1px;
+    font-weight: 600;
 }
 .faq-btn {
     display: block; width: 100%; text-align: left;
-    padding: 7px 10px; margin-bottom: 4px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.04);
+    padding: 8px 12px; margin-bottom: 4px;
+    background: #f9f9f9;
+    border: 1px solid #f0f0f0;
     border-radius: 8px;
-    color: rgba(255,255,255,0.5);
+    color: #666666;
     font-size: 11px; cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
 }
-.faq-btn:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
+.faq-btn:hover { background: #f0f0f0; color: #0a0a0a; border-color: #e0e0e0; }
 
 .chat-input-zone {
     display: flex;
     padding: 12px 16px;
-    border-top: 1px solid rgba(255,255,255,0.06);
+    border-top: 1px solid #f0f0f0;
     gap: 8px;
+    background: #ffffff;
+    border-radius: 0 0 20px 20px;
 }
 .chat-input-zone input {
     flex: 1;
     padding: 10px 14px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.06);
+    background: #f4f4f4;
+    border: 1px solid #e8e8e8;
     border-radius: 10px;
-    color: #fff; font-size: 13px; outline: none;
+    color: #0a0a0a; font-size: 13px; outline: none;
     transition: border-color 0.2s;
 }
-.chat-input-zone input:focus       { border-color: rgba(99,102,241,0.4); }
-.chat-input-zone input::placeholder { color: rgba(255,255,255,0.25); }
+.chat-input-zone input:focus       { border-color: #3b82f6; background: #ffffff; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.chat-input-zone input::placeholder { color: #bbbbbb; }
 .chat-input-zone button {
     padding: 10px 16px;
-    background: linear-gradient(135deg, #6366f1, #a855f7);
+    background: #0a0a0a;
     border: none; border-radius: 10px;
-    color: #fff; font-size: 13px; font-weight: 500;
-    cursor: pointer; transition: opacity 0.2s;
+    color: #fff; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: background 0.2s;
 }
-.chat-input-zone button:hover { opacity: 0.85; }
+.chat-input-zone button:hover { background: #222222; }
 .chat-input-zone input:disabled,
-.chat-input-zone button:disabled { opacity: 0.5; cursor: not-allowed; }
+.chat-input-zone button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ════════════════════════════════════════════════════════════════════
    Écran de chargement
    ════════════════════════════════════════════════════════════════════ */
 #loading-screen {
     position: fixed; inset: 0; z-index: 9999;
-    background: #0d0d1a;
+    background: #0a0a0a;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     transition: opacity 0.6s;
 }
 #loading-screen.hidden { opacity: 0; pointer-events: none; }
 .loading-logo {
-    font-size: 32px; font-weight: 200;
-    letter-spacing: 6px; text-transform: uppercase;
-    background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
-    -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-size: 28px; font-weight: 800;
+    letter-spacing: 8px; text-transform: uppercase;
+    color: #ffffff;
     margin-bottom: 40px;
 }
 .loading-bar-track {
-    width: 240px; height: 3px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 3px; overflow: hidden;
+    width: 200px; height: 2px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px; overflow: hidden;
 }
 .loading-bar-fill {
     height: 100%; width: 0%;
-    background: linear-gradient(90deg, #6366f1, #a855f7);
-    border-radius: 3px; transition: width 0.4s ease;
+    background: #3b82f6;
+    border-radius: 2px; transition: width 0.4s ease;
 }
 #loading-status {
-    margin-top: 16px; font-size: 13px;
-    color: rgba(255,255,255,0.4); letter-spacing: 1px;
+    margin-top: 20px; font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 2px;
+    text-transform: uppercase;
 }
 
 /* ════════════════════════════════════════════════════════════════════
    Poignée bottom-sheet (drag handle)
    ════════════════════════════════════════════════════════════════════ */
 .drag-handle {
-    display: none; /* cachée sur desktop */
+    display: none;
     justify-content: center;
     align-items: center;
     padding: 10px 0 4px;
     cursor: grab;
     touch-action: none;
     flex-shrink: 0;
+    background: #ffffff;
 }
 .drag-handle:active { cursor: grabbing; }
 .drag-handle-bar {
-    width: 40px; height: 4px;
-    background: rgba(255,255,255,0.25);
+    width: 36px; height: 4px;
+    background: #e0e0e0;
     border-radius: 2px;
     transition: background 0.2s;
 }
 .drag-handle:hover .drag-handle-bar,
-.drag-handle:active .drag-handle-bar {
-    background: rgba(99,102,241,0.7);
-}
+.drag-handle:active .drag-handle-bar { background: #3b82f6; }
 
 /* ════════════════════════════════════════════════════════════════════
    Responsive mobile
@@ -620,19 +666,18 @@ body {
         top: auto; bottom: 0; left: 0; right: 0;
         width: 100%; max-height: 55vh;
         transform: translateY(110%);
-        opacity: 1;             /* bottom-sheet : pas de fondu, seulement le glissement */
-        pointer-events: auto;   /* toujours interactif même avant .active */
+        opacity: 1;
+        pointer-events: auto;
         border-radius: 20px 20px 0 0;
-        border: 1px solid rgba(255,255,255,0.06);
+        border: 1px solid #e8e8e8;
         border-bottom: none;
     }
     #info-panel.active,
     #info-panel.contextual.active { transform: translateY(0); }
-    /* Transition désactivée pendant le drag (ajoutée/retirée par JS) */
     #info-panel.dragging { transition: none; }
 
     #chat-panel { left: 10px; right: 10px; bottom: 10px; width: auto; }
     #ui-overlay h1  { font-size: 14px; }
-    #mode-toggle    { font-size: 11px; padding: 6px 12px; }
+    #mode-toggle    { font-size: 11px; padding: 7px 14px; }
     #viewer-hint    { display: none; }
 }
