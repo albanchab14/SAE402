@@ -205,7 +205,8 @@ function _setIndicator(active, text) {
  */
 function _closeInfoPanel() {
     const panel = document.getElementById('info-panel');
-    panel.classList.remove('active', 'contextual');
+    panel.classList.remove('active', 'contextual', 'expanded');
+    panel.style.maxHeight = '';
     // Effacer les inline styles éventuellement posés par _positionPanel
     panel.style.left            = '';
     panel.style.top             = '';
@@ -261,11 +262,66 @@ function _positionPanel(screenPos) {
     panel.classList.add('contextual');
 }
 
+/**
+ * Branche la poignée de glissement (drag handle) du panneau bottom-sheet.
+ * Actif uniquement sur mobile (max-width 768px).
+ *
+ * Comportement :
+ *   - Glisser vers le haut  → agrandit le panneau (jusqu'à 88vh)
+ *   - Glisser vers le bas   → réduit le panneau  (jusqu'à 25vh)
+ *   - La fermeture se fait uniquement via le bouton ✕
+ *   - La taille est conservée à l'endroit où l'utilisateur relâche
+ */
+function _setupDragHandle() {
+    const panel  = document.getElementById('info-panel');
+    const handle = panel.querySelector('.drag-handle');
+    if (!handle) return;
+
+    const MIN_VH = 25;   // hauteur minimale en vh
+    const MAX_VH = 88;   // hauteur maximale en vh
+
+    let startY       = 0;
+    let startHeightPx = 0;
+    let dragging     = false;
+
+    handle.addEventListener('touchstart', (e) => {
+        if (window.innerWidth > 768) return;
+        dragging      = true;
+        startY        = e.touches[0].clientY;
+        // Lire la hauteur actuelle réelle du panneau
+        startHeightPx = panel.getBoundingClientRect().height;
+        panel.classList.add('dragging');
+    }, { passive: true });
+
+    handle.addEventListener('touchmove', (e) => {
+        if (!dragging || window.innerWidth > 768) return;
+        const deltaY  = e.touches[0].clientY - startY;
+        // Glisser vers le haut (deltaY < 0) → agrandit, vers le bas → réduit
+        const newHeightPx = startHeightPx - deltaY;
+        const minPx = (MIN_VH / 100) * window.innerHeight;
+        const maxPx = (MAX_VH / 100) * window.innerHeight;
+        panel.style.maxHeight = Math.min(maxPx, Math.max(minPx, newHeightPx)) + 'px';
+    }, { passive: true });
+
+    const onEnd = () => {
+        if (!dragging) return;
+        dragging = false;
+        panel.classList.remove('dragging');
+        // Pas de snap : on conserve la maxHeight là où l'utilisateur a relâché
+    };
+    handle.addEventListener('touchend',    onEnd);
+    handle.addEventListener('touchcancel', onEnd);
+}
+
 /** Branche les événements du panneau fiche technique. */
 function setupInfoPanel() {
     document.querySelector('#info-panel .close-btn').addEventListener('click', () => {
         _closeInfoPanel();
     });
+
+    // ── Drag handle : bottom-sheet mobile ─────────────────────────────────────
+    _setupDragHandle();
+
 
     document.querySelectorAll('#info-panel .tab').forEach(tab => {
         tab.addEventListener('click', () => {

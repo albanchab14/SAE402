@@ -587,9 +587,35 @@ body {
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   Poignée bottom-sheet (drag handle)
+   ════════════════════════════════════════════════════════════════════ */
+.drag-handle {
+    display: none; /* cachée sur desktop */
+    justify-content: center;
+    align-items: center;
+    padding: 10px 0 4px;
+    cursor: grab;
+    touch-action: none;
+    flex-shrink: 0;
+}
+.drag-handle:active { cursor: grabbing; }
+.drag-handle-bar {
+    width: 40px; height: 4px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 2px;
+    transition: background 0.2s;
+}
+.drag-handle:hover .drag-handle-bar,
+.drag-handle:active .drag-handle-bar {
+    background: rgba(99,102,241,0.7);
+}
+
+/* ════════════════════════════════════════════════════════════════════
    Responsive mobile
    ════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
+    .drag-handle { display: flex; }
+
     #info-panel {
         top: auto; bottom: 0; left: 0; right: 0;
         width: 100%; max-height: 55vh;
@@ -602,6 +628,8 @@ body {
     }
     #info-panel.active,
     #info-panel.contextual.active { transform: translateY(0); }
+    /* Transition désactivée pendant le drag (ajoutée/retirée par JS) */
+    #info-panel.dragging { transition: none; }
 
     #chat-panel { left: 10px; right: 10px; bottom: 10px; width: auto; }
     #ui-overlay h1  { font-size: 14px; }
