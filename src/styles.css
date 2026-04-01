@@ -273,15 +273,16 @@ body {
     pointer-events: all;
 }
 
-/* ── Mode contextuel ─────────────────────────────────────────────── */
+/* ── Mode contextuel (desktop : panneau à droite, draggable) ──────── */
 #info-panel.contextual {
     top: auto; left: auto;
     border-radius: 20px;
     border-left: 1px solid #e8e8e8;
-    transform: scale(0.88);
+    transform: translateX(30px);
+    opacity: 0;
 }
 #info-panel.contextual.active {
-    transform: scale(1);
+    transform: translateX(0);
     opacity: 1;
     pointer-events: all;
 }
@@ -294,6 +295,8 @@ body {
     align-items: flex-start;
     gap: 14px;
     background: #0a0a0a;
+    user-select: none;
+    -webkit-user-select: none;
 }
 .part-icon {
     width: 40px; height: 40px;
@@ -692,6 +695,4 @@ body {
 
     #chat-panel { left: 10px; right: 10px; bottom: 10px; width: auto; }
     #ui-overlay h1  { font-size: 14px; }
-    #mode-toggle    { font-size: 11px; padding: 7px 14px; }
-    #viewer-hint    { display: none; }
-}
+    #mode-toggle    { font-size: 11px; padding: 

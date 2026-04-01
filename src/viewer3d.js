@@ -29,6 +29,7 @@ let partsData      = [];
 let canvas         = null;
 let isInitialized  = false;
 let onHotspotClick = null;   // Callback(part, screenPos) déclenché au clic
+let cameraAnim     = null;   // animation caméra en cours
 
 // ─── Sélection / highlight ────────────────────────────────────────────────────
 
@@ -350,6 +351,60 @@ function _worldToScreen(worldPos, cam) {
         x: ( ndc.x * 0.5 + 0.5) * window.innerWidth,
         y: (-ndc.y * 0.5 + 0.5) * window.innerHeight
     };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Animation caméra : focus sur une partie du robot
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Anime la caméra pour se rapprocher et centrer la partie cliquée.
+ * @param {Object} part - objet part avec hotspot_x, hotspot_y, hotspot_z
+ */
+export function focusOnPart(part) {
+    if (!robotGroup || !camera || !controls || xrSession) return;
+
+    // Calculer le centre monde du hotspot de la partie
+    const hx = parseFloat(part.hotspot_x ?? part.hotspot_position?.x ?? 0);
+    const hy = parseFloat(part.hotspot_y ?? part.hotspot_position?.y ?? 0);
+    const hz = parseFloat(part.hotspot_z ?? part.hotspot_position?.z ?? 0);
+    const localHotspot = new THREE.Vector3(hx, hy, hz);
+    const worldTarget  = robotGroup.localToWorld(localHotspot.clone());
+
+    // Direction caméra → cible, reculer pour un léger zoom
+    const camDir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+    const zoomDist = 3.2;  // distance de la caméra au point d'intérêt
+    const newCamPos = worldTarget.clone().add(camDir.multiplyScalar(zoomDist));
+
+    // Empêcher la caméra de descendre sous le sol
+    newCamPos.y = Math.max(newCamPos.y, worldTarget.y * 0.3 + 0.5);
+
+    // Lancer l'animation smooth
+    const startPos    = camera.position.clone();
+    const startTarget = controls.target.clone();
+    const duration    = 800; // ms
+    const startTime   = performance.now();
+
+    // Annuler toute animation précédente
+    if (cameraAnim) cameraAnim.cancelled = true;
+    const anim = { cancelled: false };
+    cameraAnim = anim;
+
+    function step() {
+        if (anim.cancelled) return;
+        const elapsed = performance.now() - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        // Ease out cubic
+        const ease = 1 - Math.pow(1 - t, 3);
+
+        camera.position.lerpVectors(startPos, newCamPos, ease);
+        controls.target.lerpVectors(startTarget, worldTarget, ease);
+        controls.update();
+
+        if (t < 1) requestAnimationFrame(step);
+        else cameraAnim = null;
+    }
+    requestAnimationFrame(step);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

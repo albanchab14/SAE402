@@ -18,7 +18,8 @@ import {
     isXRSupported,
     startXRSession,
     stopXRSession,
-    clearMeshSelection
+    clearMeshSelection,
+    focusOnPart
 } from './viewer3d.js';
 
 // ─── État global ──────────────────────────────────────────────────────────────
@@ -207,9 +208,10 @@ function _closeInfoPanel() {
     const panel = document.getElementById('info-panel');
     panel.classList.remove('active', 'contextual', 'expanded');
     panel.style.maxHeight = '';
-    // Effacer les inline styles éventuellement posés par _positionPanel
+    // Effacer les inline styles éventuellement posés par _positionPanel ou drag
     panel.style.left            = '';
     panel.style.top             = '';
+    panel.style.right           = '';
     panel.style.transformOrigin = '';
     currentPart = null;
     clearMeshSelection();
@@ -221,44 +223,22 @@ function _closeInfoPanel() {
 }
 
 /**
- * Positionne le panneau fiche technique près du hotspot cliqué.
- * Actif uniquement sur desktop (largeur > 768 px).
- * Logique de placement intelligent :
- *   - Horizontal : à droite du hotspot si la place le permet, sinon à gauche
- *   - Vertical   : centré sur le hotspot, borné aux marges de la fenêtre
- *
- * @param {{ x: number, y: number }} screenPos - Coordonnées CSS du hotspot
+ * Positionne le panneau sur le côté droit de l'écran (ne recouvre pas le robot).
+ * Sur desktop (largeur > 768 px) uniquement.
  */
-function _positionPanel(screenPos) {
-    const panel     = document.getElementById('info-panel');
-    const PANEL_W   = 340;
-    const PANEL_H   = Math.min(window.innerHeight * 0.8, 560); // hauteur estimée
-    const MARGIN    = 18;
+function _positionPanel() {
+    const panel   = document.getElementById('info-panel');
+    const PANEL_W = 340;
+    const MARGIN  = 20;
 
-    let x, y, origin;
+    // Toujours à droite de l'écran, centré verticalement
+    const x = window.innerWidth - PANEL_W - MARGIN;
+    const y = MARGIN + 40; // un peu sous le bouton AR
 
-    // ── Horizontal ────────────────────────────────────────────────────────────
-    const spaceRight = window.innerWidth - (screenPos.x + MARGIN + PANEL_W);
-    if (spaceRight >= 0) {
-        // Assez de place à droite du hotspot
-        x      = screenPos.x + MARGIN;
-        origin = 'left center';
-    } else {
-        // Trop proche du bord droit → panneau à gauche du hotspot
-        x      = screenPos.x - MARGIN - PANEL_W;
-        origin = 'right center';
-        // Si même à gauche il déborde (hotspot tout à gauche), coller à la marge
-        if (x < MARGIN) { x = MARGIN; origin = 'left center'; }
-    }
-
-    // ── Vertical ──────────────────────────────────────────────────────────────
-    y = screenPos.y - PANEL_H / 2;
-    y = Math.max(MARGIN, Math.min(y, window.innerHeight - PANEL_H - MARGIN));
-
-    // ── Appliquer ─────────────────────────────────────────────────────────────
     panel.style.left            = x + 'px';
     panel.style.top             = y + 'px';
-    panel.style.transformOrigin = origin;
+    panel.style.right           = '';
+    panel.style.transformOrigin = 'right center';
     panel.classList.add('contextual');
 }
 
@@ -322,6 +302,8 @@ function setupInfoPanel() {
     // ── Drag handle : bottom-sheet mobile ─────────────────────────────────────
     _setupDragHandle();
 
+    // ── Drag souris desktop : déplacement libre du panneau ────────────────────
+    _setupPanelDrag();
 
     document.querySelectorAll('#info-panel .tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -334,6 +316,51 @@ function setupInfoPanel() {
 
     document.getElementById('ask-ai-btn').addEventListener('click', () => {
         openChat(currentPart?.id);
+    });
+}
+
+/**
+ * Permet de déplacer le panneau en maintenant le clic souris sur le header.
+ * Actif sur desktop (écran > 768 px).
+ */
+function _setupPanelDrag() {
+    const panel  = document.getElementById('info-panel');
+    const header = panel.querySelector('.panel-header');
+    if (!header) return;
+
+    let dragging  = false;
+    let offsetX   = 0;
+    let offsetY   = 0;
+
+    header.style.cursor = 'grab';
+
+    header.addEventListener('mousedown', (e) => {
+        if (window.innerWidth <= 768) return;
+        // Ne pas déclencher si clic sur le bouton fermer
+        if (e.target.closest('.close-btn')) return;
+
+        dragging = true;
+        const rect = panel.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        header.style.cursor = 'grabbing';
+        panel.style.transition = 'none';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const x = Math.max(0, Math.min(e.clientX - offsetX, window.innerWidth  - 100));
+        const y = Math.max(0, Math.min(e.clientY - offsetY, window.innerHeight - 100));
+        panel.style.left = x + 'px';
+        panel.style.top  = y + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false;
+        header.style.cursor = 'grab';
+        panel.style.transition = '';
     });
 }
 
@@ -412,13 +439,18 @@ async function showPartInfo(part, screenPos = null) {
     // Sur mobile (≤768 px) la fiche remonte depuis le bas (CSS) — pas de repositionnement JS.
     const panel = document.getElementById('info-panel');
     panel.classList.remove('contextual');    // reset d'une éventuelle ouverture précédente
-    panel.style.left = panel.style.top = panel.style.transformOrigin = '';
+    panel.style.left = panel.style.top = panel.style.right = panel.style.transformOrigin = '';
 
-    if (screenPos && window.innerWidth > 768) {
-        _positionPanel(screenPos);
+    if (window.innerWidth > 768) {
+        _positionPanel();
     }
 
     panel.classList.add('active');
+
+    // ── Animation caméra : zoom sur la partie sélectionnée ─────────────────────
+    if (!xrActive) {
+        focusOnPart(fullPart);
+    }
 
     // En mode AR : masquer le viseur pendant que la fiche est ouverte
     if (xrActive) {
