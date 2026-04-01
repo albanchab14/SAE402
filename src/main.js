@@ -370,27 +370,37 @@ async function showPartInfo(part, screenPos = null) {
 
     // Onglet Documents
     const docs = fullPart.documents || [];
+    const docIcons = {
+        'Principe de fonctionnement et Architecture': 'auto_stories',
+        'Directives d\'Installation & Câblage': 'build',
+        'Sécurité et Fonctions PFL': 'gpp_maybe',
+        'Recommandations de Maintenance': 'engineering'
+    };
     document.getElementById('docs-list').innerHTML = docs.length
-        ? docs.map(d => `
+        ? docs.map(d => {
+            const icon = docIcons[d.title] || 'description';
+            return `
             <div class="doc-card">
-                <div class="doc-type">${(d.doc_type || 'TEXT').toUpperCase()}</div>
-                <div class="doc-title">${d.title}</div>
-                <div class="doc-content">${(d.content || '').substring(0, 200)}${(d.content?.length > 200) ? '…' : ''}</div>
-            </div>`).join('')
+                <div class="doc-header">
+                    <span class="doc-icon material-icons-outlined">${icon}</span>
+                    <span class="doc-title">${d.title}</span>
+                </div>
+                <div class="doc-content">${d.content || ''}</div>
+            </div>`;
+        }).join('')
         : '<p style="color:rgba(255,255,255,0.3);text-align:center;padding:20px 0">Aucun document disponible.</p>';
 
     // Onglet Maintenance
-    document.getElementById('maintenance-info').innerHTML = `
-        <table class="maintenance-table">
-            <tr><td>Mensuel</td><td>Inspection câbles, connecteurs, fixations</td></tr>
-            <tr><td>3 mois</td><td>Vérifier couple base (9 Nm), tester fonctions sécurité</td></tr>
-            <tr><td>6 mois</td><td>Vérifier version PolyScope, sauvegarder programmes</td></tr>
-            <tr><td>1 an</td><td>Inspection joints O-ring (réf 131095)</td></tr>
-            <tr><td>5 ans</td><td>Remplacer batterie CR2032 (réf 170009)</td></tr>
-            <tr><td>35 000 h</td><td>Remplacer Wrist 1 (réf 124100)</td></tr>
-            <tr><td>35 000 h</td><td>Remplacer Wrist 2 (réf 124101)</td></tr>
-            <tr><td>35 000 h</td><td>Remplacer Wrist 3 (réf 102414)</td></tr>
-        </table>`;
+    const maintenanceDoc = docs.find(d => d.title && d.title.toLowerCase().includes('maintenance'));
+    document.getElementById('maintenance-info').innerHTML = maintenanceDoc
+        ? `<div class="doc-card">
+            <div class="doc-header">
+                <span class="doc-icon material-icons-outlined">engineering</span>
+                <span class="doc-title">${maintenanceDoc.title}</span>
+            </div>
+            <div class="doc-content">${maintenanceDoc.content}</div>
+           </div>`
+        : '<p style="color:rgba(255,255,255,0.3);text-align:center;padding:20px 0">Aucune donnée de maintenance.</p>';
 
     // Revenir à l'onglet Général
     document.querySelectorAll('#info-panel .tab').forEach(t => t.classList.remove('active'));
