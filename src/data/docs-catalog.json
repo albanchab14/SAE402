@@ -1,0 +1,45 @@
+{
+  "categories": [
+    {
+      "id": "user_manual",
+      "label": "Manuel utilisateur",
+      "icon": "📖",
+      "docs": [
+        {
+          "id": "ur5e_manuel_complet",
+          "title": "Manuel Complet UR5e",
+          "subtitle": "Documentation complète Universal Robots UR5e",
+          "file": "/docs/UniversalRobots_UR5e_Manuel_Complet.pdf",
+          "pages": "—",
+          "lang": "FR",
+          "size": "—"
+        },
+        {
+          "id": "polyscope_user_manual",
+          "title": "Manuel PolyScope X",
+          "subtitle": "Interface de programmation PolyScope X",
+          "file": "/docs/746-446-00_UR15 PolyScope X_User_Manual_fr_Global.pdf",
+          "pages": "—",
+          "lang": "FR",
+          "size": "—"
+        }
+      ]
+    },
+    {
+      "id": "datasheet",
+      "label": "Fiche technique",
+      "icon": "📋",
+      "docs": [
+        {
+          "id": "ur5e_techsheet",
+          "title": "Fiche technique UR5e",
+          "subtitle": "Spécifications complètes — Technical Sheet",
+          "file": "/docs/UR15_techsheet_en.pdf",
+          "pages": "—",
+          "lang": "EN",
+          "size": "—"
+        }
+      ]
+    }
+  ]
+}
