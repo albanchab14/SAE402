@@ -120,18 +120,35 @@ if ($method === 'GET') {
             break;
 
         // --- Statut API ---
-        default:
+        case 'status':
             echo json_encode([
                 "status"  => "online",
                 "project" => "SAE 402 - MARA",
-                "stack"   => "A-Frame + Three.js + AR.js + Gemini AI",
-                "robot"   => "Universal Robots UR5e e-Series"
+                "stack"   => "Three.js + WebXR",
+                "robot"   => "Universal Robots UR5e"
             ]);
-    }
+            break;
 
-// ============================================================
-// POST endpoints
-// ============================================================
+        // --- Liste les images de référence pour le tracking AR ---
+        case 'get_markers':
+            $dir = '../public/markers/targets';
+            if (!is_dir($dir)) {
+                echo json_encode([]);
+                break;
+            }
+            $files = scandir($dir);
+            $images = [];
+            foreach ($files as $file) {
+                if (preg_match('/\.(jpg|jpeg|png|webp)$/i', $file)) {
+                    $images[] = $file;
+                }
+            }
+            echo json_encode($images);
+            break;
+
+        default:
+            echo json_encode(["status" => "error", "message" => "Unknown action: $action"]);
+    }
 } elseif ($method === 'POST') {
     $input  = json_decode(file_get_contents('php://input'), true) ?? [];
     $action = $input['action'] ?? 'unknown';

@@ -71,10 +71,10 @@ const PART_ZONES = [
 
 let xrSession       = null;
 let xrHitTestSource = null;
-let xrRefSpace      = null;
 let xrReticle       = null;
 let xrController    = null;
 let xrRobotPlaced   = false;
+let markerBitmaps   = [];    // Stocke les ImageBitmaps pour le tracking
 let onRobotPlaced   = null;
 
 // En WebXR : 1 unité Three.js = 1 m réel. XR_SCALE = 0.3 → bras ≈ 90 cm.
@@ -477,6 +477,37 @@ export async function isXRSupported() {
 }
 
 /**
+ * Charge tous les marqueurs du dossier targets/ via l'API
+ * @returns {Promise<number>} - nombre de marqueurs chargés
+ */
+async function _loadMarkers() {
+    try {
+        const resp = await fetch('/api/api.php?action=get_markers');
+        const images = await resp.json();
+        
+        markerBitmaps = [];
+        for (const imgName of images) {
+            const img = new Image();
+            img.src = `/markers/targets/${imgName}`;
+            await new Promise((res, rej) => {
+                img.onload = res;
+                img.onerror = rej;
+            });
+            const bitmap = await createImageBitmap(img);
+            markerBitmaps.push({
+                image: bitmap,
+                widthInMeters: 0.2 // Largeur physique par défaut : 20 cm
+            });
+        }
+        console.log(`[Viewer] ${markerBitmaps.length} marqueurs chargés.`);
+        return markerBitmaps.length;
+    } catch (err) {
+        console.error('[Viewer] Erreur chargement marqueurs :', err);
+        return 0;
+    }
+}
+
+/**
  * Démarre une session WebXR AR.
  * @param {Function} [placedCb] - appelée quand le robot est posé
  */
@@ -484,19 +515,34 @@ export async function startXRSession(placedCb = null) {
     if (!renderer) throw new Error('Viewer non initialisé');
     onRobotPlaced = placedCb;
 
-    const session = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['hit-test'],
-        optionalFeatures: ['dom-overlay'],
+    // Charger les marqueurs avant de demander la session
+    await _loadMarkers();
+
+    const sessionOptions = {
+        requiredFeatures: ['hit-test', 'dom-overlay'],
+        optionalFeatures: ['image-tracking'],
         domOverlay: { root: document.body }
-    });
+    };
+
+    // Injecter les marqueurs si présents
+    if (markerBitmaps.length > 0) {
+        sessionOptions.trackedImages = markerBitmaps;
+    }
+
+    const session = await navigator.xr.requestSession('immersive-ar', sessionOptions);
     xrSession = session;
 
-    // IMPORTANT : forcer 'local' AVANT setSession() pour éviter l'erreur local-floor
-    renderer.xr.setReferenceSpaceType('local');
+    // Tenter 'local-floor' (mieux pour le sol), sinon 'local'
+    let refSpaceType = 'local-floor';
+    try {
+        await session.requestReferenceSpace(refSpaceType);
+    } catch (e) {
+        refSpaceType = 'local';
+    }
+    renderer.xr.setReferenceSpaceType(refSpaceType);
     renderer.xr.enabled = true;
     await renderer.xr.setSession(session);
 
-    xrRefSpace = await session.requestReferenceSpace('local');
     const vwrSpace  = await session.requestReferenceSpace('viewer');
     xrHitTestSource = await session.requestHitTestSource({ space: vwrSpace });
 
@@ -600,13 +646,52 @@ function _checkXRHotspotHit() {
 function _xrRenderLoop(timestamp, frame) {
     if (!frame) return;
 
+    const referenceSpace = renderer.xr.getReferenceSpace();
+
+    // 1. Détection des marqueurs (Prioritaire)
+    if (xrSession.getTrackedImageScores) {
+        const results = frame.getImageTrackingResults();
+        for (const result of results) {
+            if (result.trackingState === 'tracked') {
+                const pose = frame.getPose(result.imageSpace, referenceSpace);
+                if (pose && robotGroup) {
+                    // Positionner le robot sur le marqueur
+                    const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
+                    const pos = new THREE.Vector3();
+                    const quat = new THREE.Quaternion();
+                    const scale = new THREE.Vector3();
+                    matrix.decompose(pos, quat, scale);
+
+                    // Alignement : le robot est posé verticalement sur le marqueur
+                    // On garde un scale fixe (XR_SCALE = 0.3)
+                    robotGroup.position.copy(pos);
+                    robotGroup.quaternion.copy(quat);
+                    robotGroup.scale.setScalar(XR_SCALE);
+                    
+                    // Si c'est la première détection, on considère le robot comme posé
+                    if (!xrRobotPlaced) {
+                        robotGroup.visible = true;
+                        xrRobotPlaced = true;
+                        xrReticle.visible = false;
+                        if (onRobotPlaced) onRobotPlaced();
+                        
+                        const crosshair = document.getElementById('ar-crosshair');
+                        if (crosshair) crosshair.style.display = 'block';
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Hit-test classique (si le robot n'est pas encore posé par marqueur)
     if (xrHitTestSource && !xrRobotPlaced) {
         const results = frame.getHitTestResults(xrHitTestSource);
         if (results.length > 0) {
-            const pose = results[0].getPose(xrRefSpace);
+            const pose = results[0].getPose(referenceSpace);
             if (pose) {
                 xrReticle.visible = true;
                 xrReticle.matrix.fromArray(pose.transform.matrix);
+                xrReticle.matrixWorldNeedsUpdate = true;
             }
         } else {
             xrReticle.visible = false;

@@ -158,7 +158,7 @@ async function setupModeToggle() {
                 btn.style.pointerEvents = 'auto';
 
                 document.getElementById('ar-overlay')?.classList.add('active');
-                _setIndicator(false, 'Cherche une surface…');
+                _setIndicator(false, 'Visez le robot…');
 
             } catch (err) {
                 console.error('[MARA] Échec démarrage XR :', err);
