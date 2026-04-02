@@ -251,6 +251,54 @@ function _getPartFromLocalX(localX) {
     return null;
 }
 
+/**
+ * Trouve la partie du robot ciblée (avec système d'aim-assist / magnétisme).
+ * Résout le problème nécessitant de viser ou cliquer au pixel près.
+ */
+function _getBestTargetPart(raycaster, useTolerance = true) {
+    if (!robotGroup || !partsData || !partsData.length) return null;
+
+    const hits = raycaster.intersectObjects(robotMeshes, false);
+    const hitPoint = hits.length > 0 ? hits[0].point : null;
+
+    let bestPart = null;
+    let minScore = Infinity;
+
+    for (const part of partsData) {
+        if (!part.hotspot_position && part.hotspot_x === undefined) continue;
+        const hx = parseFloat(part.hotspot_x ?? part.hotspot_position?.x ?? 0);
+        const hy = parseFloat(part.hotspot_y ?? part.hotspot_position?.y ?? 0);
+        const hz = parseFloat(part.hotspot_z ?? part.hotspot_position?.z ?? 0);
+        
+        const hotspotLocal = new THREE.Vector3(hx, hy, hz);
+        const hotspotWorld = robotGroup.localToWorld(hotspotLocal);
+
+        if (hitPoint) {
+            const dist = hitPoint.distanceTo(hotspotWorld);
+            if (dist < minScore) {
+                minScore = dist;
+                bestPart = part;
+            }
+        } else if (useTolerance) {
+            const distToRay = raycaster.ray.distanceToPoint(hotspotWorld);
+            const scaledTolerance = 0.35 * robotGroup.scale.x; // Tolérance généreuse adaptée à l'échelle
+            
+            const dirToHotspot = hotspotWorld.clone().sub(raycaster.ray.origin);
+            if (dirToHotspot.dot(raycaster.ray.direction) > 0 && distToRay < scaledTolerance && distToRay < minScore) {
+                minScore = distToRay;
+                bestPart = part;
+            }
+        }
+    }
+
+    if (hitPoint && minScore > 0.4 * robotGroup.scale.x) {
+        const localPoint = robotGroup.worldToLocal(hitPoint.clone());
+        bestPart = _getPartFromLocalX(localPoint.x) || bestPart;
+    }
+
+    return bestPart;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Highlight / sélection
 // ─────────────────────────────────────────────────────────────────────────────
@@ -306,24 +354,25 @@ export function clearMeshSelection() {
 function _onCanvasClick(e) {
     if (xrSession || !robotMeshes.length) return;
 
+    const tooltip = document.getElementById('hover-tooltip');
+    if (tooltip) tooltip.classList.remove('visible');
+
     const rect = canvas.getBoundingClientRect();
     mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
     mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
-    const hits = raycaster.intersectObjects(robotMeshes, false);
-    if (!hits.length) return;
-
-    // Convertir le point d'impact en espace local du robotGroup
-    const localPoint = robotGroup.worldToLocal(hits[0].point.clone());
-    const part       = _getPartFromLocalX(localPoint.x);
+    const part = _getBestTargetPart(raycaster, true);
     if (!part) return;
 
-    // Highlight de la zone cliquée
-    _selectZone(localPoint.x);
+    const hx = parseFloat(part.hotspot_x ?? part.hotspot_position?.x ?? 0);
+    _selectZone(hx);
 
-    // Coordonnées écran du point d'impact pour positionner le panneau
-    const screenPos = _worldToScreen(hits[0].point, camera);
+    const hy = parseFloat(part.hotspot_y ?? part.hotspot_position?.y ?? 0);
+    const hz = parseFloat(part.hotspot_z ?? part.hotspot_position?.z ?? 0);
+    const loc = new THREE.Vector3(hx, hy, hz);
+    const screenPos = _worldToScreen(robotGroup.localToWorld(loc), camera);
+    
     onHotspotClick?.(part, screenPos);
 }
 
@@ -335,8 +384,25 @@ function _onMouseMove(e) {
     mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
-    const hits = raycaster.intersectObjects(robotMeshes, false);
-    canvas.style.cursor = hits.length > 0 ? 'pointer' : 'default';
+    const part = _getBestTargetPart(raycaster, true);
+    canvas.style.cursor = part ? 'pointer' : 'default';
+
+    const tooltip = document.getElementById('hover-tooltip');
+    if (part) {
+        if (document.getElementById('info-panel')?.classList.contains('active')) {
+            if (tooltip) tooltip.classList.remove('visible');
+            return;
+        }
+
+        if (tooltip) {
+            tooltip.textContent = part.name_fr || part.name;
+            tooltip.style.left = e.clientX + 'px';
+            tooltip.style.top = e.clientY + 'px';
+            tooltip.classList.add('visible');
+        }
+    } else {
+        if (tooltip) tooltip.classList.remove('visible');
+    }
 }
 
 /**
@@ -582,20 +648,46 @@ function _checkXRHotspotHit() {
     const xrCam  = renderer.xr.getCamera();
     raycaster.setFromCamera({ x: 0, y: 0 }, xrCam); // centre de l'écran
 
-    const hits = raycaster.intersectObjects(robotMeshes, false);
-    if (!hits.length) return;
-
-    const localPoint = robotGroup.worldToLocal(hits[0].point.clone());
-    const part       = _getPartFromLocalX(localPoint.x);
+    // Utilise l'aim-assist
+    const part = _getBestTargetPart(raycaster, true);
     if (!part || !onHotspotClick) return;
 
-    _selectZone(localPoint.x);
+    const hx = parseFloat(part.hotspot_x ?? part.hotspot_position?.x ?? 0);
+    _selectZone(hx);
 
-    const screenPos = _worldToScreen(hits[0].point, xrCam);
+    const screenPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     onHotspotClick(part, screenPos);
 }
 
 // ── Boucle XR ─────────────────────────────────────────────────────────────────
+
+function _checkXRHoveredPart() {
+    if (!robotMeshes.length || !robotGroup) return;
+
+    const xrCam  = renderer.xr.getCamera();
+    raycaster.setFromCamera({ x: 0, y: 0 }, xrCam);
+
+    const part = _getBestTargetPart(raycaster, true);
+    const labelEl = document.getElementById('ar-part-label');
+    const hintEl = document.querySelector('#ar-crosshair .crosshair-label');
+
+    if (document.querySelector('#info-panel.active, #chat-panel.active')) {
+        if (labelEl) labelEl.classList.remove('visible');
+        if (hintEl) hintEl.style.display = 'none';
+        return;
+    }
+
+    if (part) {
+        if (labelEl) {
+            labelEl.textContent = part.name_fr || part.name;
+            labelEl.classList.add('visible');
+        }
+        if (hintEl) hintEl.style.display = 'none';
+    } else {
+        if (labelEl) labelEl.classList.remove('visible');
+        if (hintEl) hintEl.style.display = 'block';
+    }
+}
 
 function _xrRenderLoop(timestamp, frame) {
     if (!frame) return;
@@ -611,6 +703,10 @@ function _xrRenderLoop(timestamp, frame) {
         } else {
             xrReticle.visible = false;
         }
+    }
+
+    if (xrRobotPlaced) {
+        _checkXRHoveredPart();
     }
 
     renderer.render(scene, camera);
@@ -643,6 +739,9 @@ function _onXRSessionEnd() {
 
     const crosshair = document.getElementById('ar-crosshair');
     if (crosshair) crosshair.style.display = 'none';
+    
+    const labelEl = document.getElementById('ar-part-label');
+    if (labelEl) labelEl.classList.remove('visible');
 
     xrSession     = null;
     xrRobotPlaced = false;

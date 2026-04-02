@@ -374,6 +374,14 @@ function _setupPanelDrag() {
  * @param {{ x: number, y: number }|null} screenPos - position écran du hotspot (null = défaut gauche)
  */
 async function showPartInfo(part, screenPos = null) {
+    const panel = document.getElementById('info-panel');
+    const isAlreadyActive = panel.classList.contains('active');
+
+    if (isAlreadyActive && currentPart && currentPart.id !== part.id) {
+        panel.classList.remove('active');
+        await new Promise(r => setTimeout(r, 350));
+    }
+
     currentPart = part;
 
     let fullPart = part;
@@ -439,7 +447,6 @@ async function showPartInfo(part, screenPos = null) {
 
     // ── Positionnement contextuel (desktop uniquement) ────────────────────────
     // Sur mobile (≤768 px) la fiche remonte depuis le bas (CSS) — pas de repositionnement JS.
-    const panel = document.getElementById('info-panel');
     panel.classList.remove('contextual');    // reset d'une éventuelle ouverture précédente
     panel.style.left = panel.style.top = panel.style.right = panel.style.transformOrigin = '';
 
@@ -447,7 +454,9 @@ async function showPartInfo(part, screenPos = null) {
         _positionPanel();
     }
 
-    panel.classList.add('active');
+    requestAnimationFrame(() => {
+        panel.classList.add('active');
+    });
 
     // ── Animation caméra : zoom sur la partie sélectionnée ─────────────────────
     if (!xrActive) {
