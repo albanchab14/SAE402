@@ -1,30 +1,9 @@
 # ============================================================
-# MARA SAE402 — Dockerfile multi-stage
-# Stage 1 : Build frontend (Vite)
-# Stage 2 : Serveur de production (Nginx + PHP-FPM)
+# MARA SAE402 — Dockerfile (simple, sans build Node.js)
+# Le frontend est pre-build localement (npm run build)
+# et le dossier dist/ est commite dans le repo.
 # ============================================================
 
-# --- Stage 1 : Build frontend ---
-FROM node:22-alpine AS frontend-build
-WORKDIR /build
-
-# npm install (pas npm ci) : le lockfile est genere sur Windows,
-# il manque les binaires natifs Linux/musl pour Rolldown (Vite 8).
-# npm install resout les optional dependencies pour la bonne plateforme.
-COPY package.json package-lock.json ./
-# ARG CACHEBUST invalide le cache Docker pour forcer npm install fresh.
-# Coolify injecte automatiquement les ARG dans le build.
-ARG CACHEBUST=2
-RUN npm install --no-audit --no-fund
-
-COPY index.html vite.config.js ./
-COPY src/ src/
-COPY public/ public/
-ENV NODE_ENV=production
-RUN set -e && npx vite build 2>&1
-
-
-# --- Stage 2 : Image de production ---
 FROM php:8.2-fpm-alpine
 
 RUN apk add --no-cache nginx supervisor curl \
@@ -32,8 +11,8 @@ RUN apk add --no-cache nginx supervisor curl \
 
 RUN mkdir -p /var/run/php /var/log/supervisor /run/nginx
 
-# Frontend build
-COPY --from=frontend-build /build/dist /var/www/html
+# Frontend (pre-build)
+COPY dist/ /var/www/html/
 
 # Backend PHP
 COPY api/ /var/www/api/
