@@ -8,11 +8,11 @@
 FROM node:22-alpine AS frontend-build
 WORKDIR /build
 
-# Force l'install des devDependencies meme si NODE_ENV=production
-# (necessaire pour @vitejs/plugin-basic-ssl en mode serve, ignore en build)
-ENV NODE_ENV=development
+# npm install (pas npm ci) : le lockfile est genere sur Windows,
+# il manque les binaires natifs Linux/musl pour Rolldown (Vite 8).
+# npm install resout les optional dependencies pour la bonne plateforme.
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 COPY index.html vite.config.js ./
 COPY src/ src/
