@@ -847,7 +847,18 @@ body {
 .menu-section-header:hover { background: rgba(255,255,255,0.06); }
 .menu-section-header.active { background: rgba(255,255,255,0.1); }
 
-.menu-section-icon { display: none; }
+.menu-section-icon {
+    font-size: 18px;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.4);
+    flex-shrink: 0;
+    transition: color 0.2s;
+    margin-right: 2px;
+}
+.menu-section-header:hover .menu-section-icon,
+.menu-section.open .menu-section-icon {
+    color: #3b82f6;
+}
 .menu-section-label {
     flex: 1;
     font-size: 13px;

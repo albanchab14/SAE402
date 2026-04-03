@@ -25,10 +25,11 @@ import {
 
 // ─── État global ──────────────────────────────────────────────────────────────
 
-let currentPart = null;   // composant sélectionné
-let chatOpen    = false;  // panneau chat visible
-let xrActive    = false;  // session WebXR en cours
-let apiOnline   = false;  // backend PHP accessible
+let currentPart      = null;   // composant sélectionné
+let chatOpen         = false;  // panneau chat visible
+let xrActive         = false;  // session WebXR en cours
+let apiOnline        = false;  // backend PHP accessible
+let _currentCloseMenu = () => {}; // référence à closeMenu pour rafraîchir la FAQ
 
 // ─── Refs DOM (écran de chargement) ──────────────────────────────────────────
 
@@ -413,7 +414,33 @@ async function showPartInfo(part, screenPos = null) {
         'Sécurité et Fonctions PFL': 'gpp_maybe',
         'Recommandations de Maintenance': 'engineering'
     };
-    document.getElementById('docs-list').innerHTML = docs.length
+
+    // Fiche PDF générée pour chaque composant (par ID de partie)
+    const PART_PDF_MAP = {
+        1:  { file: '/docs/fiche_base_joint1.pdf',             label: 'Fiche technique — Base (Joint 1)' },
+        2:  { file: '/docs/fiche_epaule_joint2.pdf',           label: 'Fiche technique — Épaule (Joint 2)' },
+        3:  { file: '/docs/fiche_bras_superieur.pdf',          label: 'Fiche technique — Bras supérieur' },
+        4:  { file: '/docs/fiche_coude_joint3.pdf',            label: 'Fiche technique — Coude (Joint 3)' },
+        5:  { file: '/docs/fiche_avant_bras.pdf',              label: 'Fiche technique — Avant-bras' },
+        6:  { file: '/docs/fiche_poignet1_joint4.pdf',         label: 'Fiche technique — Poignet 1 (Joint 4)' },
+        7:  { file: '/docs/fiche_poignet2_joint5.pdf',         label: 'Fiche technique — Poignet 2 (Joint 5)' },
+        8:  { file: '/docs/fiche_poignet3_bride_joint6.pdf',   label: 'Fiche technique — Poignet 3 + Bride (Joint 6)' },
+        9:  { file: '/docs/fiche_boitier_commande.pdf',        label: 'Fiche technique — Boîtier de commande' },
+        10: { file: '/docs/fiche_teach_pendant.pdf',           label: 'Fiche technique — Teach Pendant' },
+    };
+
+    const partPdf = PART_PDF_MAP[fullPart.id];
+    const pdfCardHtml = partPdf ? `
+        <div class="doc-card doc-card-pdf" data-file="${partPdf.file}" data-title="${partPdf.label}" style="cursor:pointer">
+            <div class="doc-header">
+                <span class="doc-icon material-icons-outlined" style="color:#3b82f6">picture_as_pdf</span>
+                <span class="doc-title">${partPdf.label}</span>
+                <span class="doc-open-hint material-icons-outlined" style="font-size:14px;color:rgba(255,255,255,0.3);margin-left:auto">open_in_new</span>
+            </div>
+            <div class="doc-content" style="color:rgba(255,255,255,0.45);font-size:12px">Appuyez pour ouvrir la fiche PDF complète de ce composant.</div>
+        </div>` : '';
+
+    const docsHtml = docs.length
         ? docs.map(d => {
             const icon = docIcons[d.title] || 'description';
             return `
@@ -425,7 +452,16 @@ async function showPartInfo(part, screenPos = null) {
                 <div class="doc-content">${d.content || ''}</div>
             </div>`;
         }).join('')
-        : '<p style="color:rgba(255,255,255,0.3);text-align:center;padding:20px 0">Aucun document disponible.</p>';
+        : '';
+
+    const docsContainer = document.getElementById('docs-list');
+    docsContainer.innerHTML = pdfCardHtml + docsHtml
+        || '<p style="color:rgba(255,255,255,0.3);text-align:center;padding:20px 0">Aucun document disponible.</p>';
+
+    // Clic sur la carte PDF → ouvre la visionneuse
+    docsContainer.querySelector('.doc-card-pdf')?.addEventListener('click', () => {
+        openPdfViewer(partPdf.file, partPdf.label, fullPart.name_fr || fullPart.name);
+    });
 
     // Onglet Maintenance
     const maintenanceDoc = docs.find(d => d.title && d.title.toLowerCase().includes('maintenance'));
@@ -582,6 +618,8 @@ async function sendQuestion() {
         typing.remove();
         const msg = appendMessage('ai', result.answer || 'Pas de réponse.');
         if (result.source === 'cache') msg.title = 'Réponse depuis le cache FAQ';
+        // Rafraîchit la FAQ du menu après chaque nouvelle réponse stockée en BDD
+        if (result.source !== 'cache') _buildMenuFaq(_currentCloseMenu);
     } catch (e) {
         typing.remove();
         // Si le backend a renvoyé une réponse "answer" malgré l'erreur, l'afficher
@@ -693,6 +731,7 @@ function setupSideMenu(parts) {
         toggleBtn.classList.remove('open');
         toggleBtn.setAttribute('aria-expanded', 'false');
     }
+    _currentCloseMenu = closeMenu;
 
     toggleBtn.addEventListener('click', () =>
         menu.classList.contains('open') ? closeMenu() : openMenu()
@@ -712,6 +751,11 @@ function setupSideMenu(parts) {
             if (!isOpen) {
                 body.classList.add('open');
                 header.classList.add('active');
+                // Rafraîchit la FAQ depuis la BDD à chaque ouverture de la section
+                const section = header.closest('.menu-section');
+                if (section?.dataset.section === 'faq') {
+                    _buildMenuFaq(_currentCloseMenu);
+                }
             }
         });
     });

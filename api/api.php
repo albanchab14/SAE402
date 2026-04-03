@@ -224,8 +224,14 @@ if ($method === 'GET') {
                 break;
             }
 
+            // Modèles obsolètes connus → remplacés automatiquement
+            $deprecatedModels = ['gemini-1.5-flash-latest', 'gemini-1.0-pro', 'gemini-pro'];
+            $geminiModel = (defined('GEMINI_MODEL') && !in_array(GEMINI_MODEL, $deprecatedModels))
+                ? GEMINI_MODEL
+                : 'gemini-2.0-flash';
+
             $geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/'
-                       . GEMINI_MODEL . ':generateContent?key=' . GEMINI_API_KEY;
+                       . $geminiModel . ':generateContent?key=' . GEMINI_API_KEY;
 
             $geminiPayload = json_encode([
                 'contents' => [[
