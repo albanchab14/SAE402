@@ -650,8 +650,8 @@ function _setupChatMic() {
 
     recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
-        input.value = transcript;
-        sendQuestion();
+        input.value = (input.value + ' ' + transcript).trim();
+        // Modification : le texte est juste inséré, on attend que l'utilisateur valide (Enter/Bouton Envoyer)
     };
 
     recognition.onend = () => {
