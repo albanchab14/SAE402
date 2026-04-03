@@ -12,6 +12,9 @@ WORKDIR /build
 # il manque les binaires natifs Linux/musl pour Rolldown (Vite 8).
 # npm install resout les optional dependencies pour la bonne plateforme.
 COPY package.json package-lock.json ./
+# ARG CACHEBUST invalide le cache Docker pour forcer npm install fresh.
+# Coolify injecte automatiquement les ARG dans le build.
+ARG CACHEBUST=2
 RUN npm install --no-audit --no-fund
 
 COPY index.html vite.config.js ./
