@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite';
-import basicSsl from '@vitejs/plugin-basic-ssl';
 import { createReadStream, existsSync } from 'fs';
 import { resolve, extname } from 'path';
 
@@ -33,24 +32,33 @@ function serveDocsFolder() {
     };
 }
 
-export default defineConfig(({ command }) => ({
-    plugins: [
-        // basicSsl uniquement en mode dev (npm run dev)
-        // En production (npm run build / Docker), on n'en a pas besoin
-        ...(command === 'serve' ? [basicSsl()] : []),
-        serveDocsFolder()
-    ],
-    server: {
-        port: parseInt(process.env.PORT || '3000'),
-        https: true,  // HTTPS auto-signé — nécessaire pour la caméra AR sur mobile
-        host: true,   // Expose sur le réseau local (0.0.0.0)
-        proxy: {
-            // Redirige /api/* → http://localhost:8000/*
-            '/api': {
-                target: 'http://localhost:8000',
-                changeOrigin: true,
-                rewrite: (path) => path.replace(/^\/api/, '')
+// defineConfig en mode async pour pouvoir importer basicSsl dynamiquement.
+// basicSsl est un devDependency — en production (Docker/Coolify), npm ci
+// ne l'installe pas si NODE_ENV=production. L'import dynamique évite
+// que le module manquant fasse planter le build.
+export default defineConfig(async ({ command }) => {
+    const plugins = [serveDocsFolder()];
+
+    if (command === 'serve') {
+        // Import dynamique : résolu uniquement en mode dev
+        const { default: basicSsl } = await import('@vitejs/plugin-basic-ssl');
+        plugins.unshift(basicSsl());
+    }
+
+    return {
+        plugins,
+        server: {
+            port: parseInt(process.env.PORT || '3000'),
+            https: true,  // HTTPS auto-signé — nécessaire pour la caméra AR sur mobile
+            host: true,   // Expose sur le réseau local (0.0.0.0)
+            proxy: {
+                // Redirige /api/* → http://localhost:8000/*
+                '/api': {
+                    target: 'http://localhost:8000',
+                    changeOrigin: true,
+                    rewrite: (path) => path.replace(/^\/api/, '')
+                }
             }
         }
-    }
+    };
 });
