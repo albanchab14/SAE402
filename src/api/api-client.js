@@ -87,11 +87,18 @@ export async function askAI(question, partId = null) {
     // Parser le JSON quelle que soit la réponse (le PHP renvoie toujours du JSON)
     let data;
     try {
-        data = await res.json();
-    } catch {
-        const err = new Error('Réponse invalide du serveur (pas du JSON).');
-        err.code = 'PARSE';
-        throw err;
+        const textResponse = await res.text();
+        try {
+            data = JSON.parse(textResponse);
+        } catch (parseError) {
+            let snippet = textResponse.substring(0, 50).trim();
+            if (snippet.startsWith('<')) snippet = "Page HTML retournée (PHP inactif ou erreur serveur)";
+            const err = new Error(`Erreur réseau (${res.status}) : ${snippet || 'Réponse vide'}`);
+            err.code = 'PARSE';
+            throw err;
+        }
+    } catch (e) {
+        throw e;
     }
 
     // Si le PHP a signalé une erreur, propager avec les détails

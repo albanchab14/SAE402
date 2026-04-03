@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MARA - Maintenance AR Robot UR5e</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined">
     <link rel="stylesheet" href="/src/styles.css">
@@ -252,6 +252,9 @@
         <div id="chat-messages"></div>
         <div id="chat-faq"></div>
         <div class="chat-input-zone">
+            <button id="chat-mic-btn" class="mic-btn" title="Dicter à la voix" aria-label="Dicter à la voix">
+                <span class="material-icons-outlined">mic</span>
+            </button>
             <input type="text" id="chat-input" placeholder="Posez votre question…" autocomplete="off">
             <button id="chat-send-btn">Envoyer</button>
         </div>

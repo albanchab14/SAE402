@@ -504,6 +504,8 @@ function setupChatPanel() {
     });
 
     document.getElementById('chat-send-btn').addEventListener('click', sendQuestion);
+
+    _setupChatMic();
 }
 
 /**
@@ -512,6 +514,10 @@ function setupChatPanel() {
  */
 async function openChat(partId = null) {
     chatOpen = true;
+    
+    // Fermer l'info panel s'il est ouvert
+    _closeInfoPanel();
+    
     document.getElementById('chat-panel').classList.add('active');
     document.getElementById('chat-toggle').classList.add('hidden');
 
@@ -608,6 +614,56 @@ function appendMessage(type, text) {
     container.appendChild(msg);
     container.scrollTop = container.scrollHeight;
     return msg;
+}
+
+
+/** Initialise la Web Speech API pour dicter aux micro. */
+function _setupChatMic() {
+    const micBtn = document.getElementById('chat-mic-btn');
+    const input = document.getElementById('chat-input');
+    if (!micBtn) return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        micBtn.style.display = 'none'; // Cacher le micro si non supporté par le navigateur
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'fr-FR';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    micBtn.addEventListener('click', () => {
+        if (micBtn.classList.contains('recording')) {
+            recognition.stop();
+        } else {
+            try {
+                recognition.start();
+                micBtn.classList.add('recording');
+                input.placeholder = "Écoute en cours...";
+            } catch (e) {
+                console.error("Microphone error:", e);
+            }
+        }
+    });
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        input.value = transcript;
+        sendQuestion();
+    };
+
+    recognition.onend = () => {
+        micBtn.classList.remove('recording');
+        input.placeholder = "Posez votre question…";
+    };
+    
+    recognition.onerror = (e) => {
+        console.error("Speech API error:", e.error);
+        micBtn.classList.remove('recording');
+        input.placeholder = "Erreur micro. Posez votre question…";
+    };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

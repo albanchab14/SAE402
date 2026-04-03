@@ -485,6 +485,19 @@ function _animate() {
 
 function _onResize() {
     if (!camera || !renderer) return;
+
+    // Ne pas redimensionner manuellement en session AR, WebXR gère le framebuffer
+    if (renderer.xr && renderer.xr.isPresenting) return;
+
+    // Sur mobile, l'apparition du clavier change innerHeight.
+    // Ignorer ce resize (uniquement quand un champ texte est actif) évite d'écraser le rendu 3D
+    if (window.innerWidth <= 768) {
+        const active = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (active === 'input' || active === 'textarea') {
+            return;
+        }
+    }
+
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
