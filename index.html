@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MARA - Maintenance AR Robot UR5e</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined">
     <link rel="stylesheet" href="/src/styles.css">
@@ -207,6 +207,7 @@
             <div class="crosshair-ring"></div>
             <div class="crosshair-dot"></div>
             <span class="crosshair-label">Visez un hotspot et tapez</span>
+            <span class="crosshair-part-name" id="ar-part-label"></span>
         </div>
         <button id="ar-quit-btn">✕ Quitter AR</button>
     </div>
@@ -235,6 +236,9 @@
         <button id="ask-ai-btn">&#9733; Poser une question à l'IA</button>
     </div>
 
+    <!-- ── Tooltip survol partie robot ─────────────────────────────────────── -->
+    <div id="hover-tooltip" class="hover-tooltip"></div>
+
     <!-- ── Bouton flottant chat ──────────────────────────────────────────────── -->
     <button id="chat-toggle" title="Assistant IA MARA">&#9733;</button>
 
@@ -248,6 +252,9 @@
         <div id="chat-messages"></div>
         <div id="chat-faq"></div>
         <div class="chat-input-zone">
+            <button id="chat-mic-btn" class="mic-btn" title="Dicter à la voix" aria-label="Dicter à la voix">
+                <span class="material-icons-outlined">mic</span>
+            </button>
             <input type="text" id="chat-input" placeholder="Posez votre question…" autocomplete="off">
             <button id="chat-send-btn">Envoyer</button>
         </div>

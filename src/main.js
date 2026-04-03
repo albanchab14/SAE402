@@ -374,6 +374,14 @@ function _setupPanelDrag() {
  * @param {{ x: number, y: number }|null} screenPos - position écran du hotspot (null = défaut gauche)
  */
 async function showPartInfo(part, screenPos = null) {
+    const panel = document.getElementById('info-panel');
+    const isAlreadyActive = panel.classList.contains('active');
+
+    if (isAlreadyActive && currentPart && currentPart.id !== part.id) {
+        panel.classList.remove('active');
+        await new Promise(r => setTimeout(r, 350));
+    }
+
     currentPart = part;
 
     let fullPart = part;
@@ -439,7 +447,6 @@ async function showPartInfo(part, screenPos = null) {
 
     // ── Positionnement contextuel (desktop uniquement) ────────────────────────
     // Sur mobile (≤768 px) la fiche remonte depuis le bas (CSS) — pas de repositionnement JS.
-    const panel = document.getElementById('info-panel');
     panel.classList.remove('contextual');    // reset d'une éventuelle ouverture précédente
     panel.style.left = panel.style.top = panel.style.right = panel.style.transformOrigin = '';
 
@@ -447,7 +454,9 @@ async function showPartInfo(part, screenPos = null) {
         _positionPanel();
     }
 
-    panel.classList.add('active');
+    requestAnimationFrame(() => {
+        panel.classList.add('active');
+    });
 
     // ── Animation caméra : zoom sur la partie sélectionnée ─────────────────────
     if (!xrActive) {
@@ -495,6 +504,8 @@ function setupChatPanel() {
     });
 
     document.getElementById('chat-send-btn').addEventListener('click', sendQuestion);
+
+    _setupChatMic();
 }
 
 /**
@@ -503,6 +514,10 @@ function setupChatPanel() {
  */
 async function openChat(partId = null) {
     chatOpen = true;
+    
+    // Fermer l'info panel s'il est ouvert
+    _closeInfoPanel();
+    
     document.getElementById('chat-panel').classList.add('active');
     document.getElementById('chat-toggle').classList.add('hidden');
 
@@ -599,6 +614,56 @@ function appendMessage(type, text) {
     container.appendChild(msg);
     container.scrollTop = container.scrollHeight;
     return msg;
+}
+
+
+/** Initialise la Web Speech API pour dicter aux micro. */
+function _setupChatMic() {
+    const micBtn = document.getElementById('chat-mic-btn');
+    const input = document.getElementById('chat-input');
+    if (!micBtn) return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        micBtn.style.display = 'none'; // Cacher le micro si non supporté par le navigateur
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'fr-FR';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    micBtn.addEventListener('click', () => {
+        if (micBtn.classList.contains('recording')) {
+            recognition.stop();
+        } else {
+            try {
+                recognition.start();
+                micBtn.classList.add('recording');
+                input.placeholder = "Écoute en cours...";
+            } catch (e) {
+                console.error("Microphone error:", e);
+            }
+        }
+    });
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        input.value = transcript;
+        sendQuestion();
+    };
+
+    recognition.onend = () => {
+        micBtn.classList.remove('recording');
+        input.placeholder = "Posez votre question…";
+    };
+    
+    recognition.onerror = (e) => {
+        console.error("Speech API error:", e.error);
+        micBtn.classList.remove('recording');
+        input.placeholder = "Erreur micro. Posez votre question…";
+    };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

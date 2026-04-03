@@ -166,6 +166,7 @@ if ($method === 'GET') {
             $systemCtx  = "Tu es MARA, un assistant technique expert en robotique industrielle, ";
             $systemCtx .= "specialise sur le robot collaboratif Universal Robots UR5e (e-Series). ";
             $systemCtx .= "Tu reponds toujours en francais, de facon concise et technique. ";
+            $systemCtx .= "IMPORTANT : Ne fais AUCUNE mise en forme Markdown. N'utilise JAMAIS d'étoiles pour mettre en gras, ni de puces, ni de listes. Renvoie uniquement du texte brut simple et direct. ";
             $systemCtx .= "Si la question n'est pas liee au robot UR5e, redirige poliment vers ce sujet. ";
             $systemCtx .= "Tu as acces aux specifications completes et a la documentation de maintenance.\n\n";
 
@@ -188,8 +189,10 @@ if ($method === 'GET') {
                     $partStmt->execute([$partId]);
                     $partData = $partStmt->fetch(PDO::FETCH_ASSOC);
                     if ($partData) {
-                        $systemCtx .= "=== COMPOSANT SELECTIONNE ===\n";
-                        $systemCtx .= "Nom : " . $partData['name_fr'] . "\n";
+                        $systemCtx .= "=== CONTEXTE DE L'INTERFACE 3D ===\n";
+                        $systemCtx .= "L'utilisateur a actuellement sélectionné un composant dans la vue 3D. ";
+                        $systemCtx .= "S'il te pose une question vague (ex: 'à quoi sert cette partie', 'qu'est ce que c'est'), il parle forcément de ce composant :\n";
+                        $systemCtx .= "Nom du composant sélectionné : " . $partData['name_fr'] . "\n";
                         $systemCtx .= "Description : " . $partData['description'] . "\n";
                         if (!empty($partData['specs'])) {
                             $systemCtx .= "Specs : " . $partData['specs'] . "\n";

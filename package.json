@@ -18,6 +18,7 @@
   "license": "ISC",
   "homepage": "https://github.com/albanchab14/SAE402#readme",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "aframe": "^1.7.1",
     "three": "^0.183.2",
     "vite": "^8.0.3"
