@@ -526,9 +526,13 @@ body {
     box-shadow: 0 8px 40px rgba(0,0,0,0.14);
     z-index: 300;
     display: flex; flex-direction: column;
-    transform: translateY(20px); opacity: 0;
+    transform: translateY(20px) translate3d(0,0,0);
+    opacity: 0;
     pointer-events: none;
     transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+    will-change: transform, opacity;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
 }
 #chat-panel.active { transform: translateY(0); opacity: 1; pointer-events: all; }
 
