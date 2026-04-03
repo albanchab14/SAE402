@@ -8,12 +8,16 @@
 FROM node:22-alpine AS frontend-build
 WORKDIR /build
 
+# Force l'install des devDependencies meme si NODE_ENV=production
+# (necessaire pour @vitejs/plugin-basic-ssl en mode serve, ignore en build)
+ENV NODE_ENV=development
 COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY index.html vite.config.js ./
 COPY src/ src/
 COPY public/ public/
+ENV NODE_ENV=production
 RUN npm run build
 
 
