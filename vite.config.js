@@ -33,8 +33,13 @@ function serveDocsFolder() {
     };
 }
 
-export default defineConfig({
-    plugins: [basicSsl(), serveDocsFolder()],
+export default defineConfig(({ command }) => ({
+    plugins: [
+        // basicSsl uniquement en mode dev (npm run dev)
+        // En production (npm run build / Docker), on n'en a pas besoin
+        ...(command === 'serve' ? [basicSsl()] : []),
+        serveDocsFolder()
+    ],
     server: {
         port: parseInt(process.env.PORT || '3000'),
         https: true,  // HTTPS auto-signé — nécessaire pour la caméra AR sur mobile
