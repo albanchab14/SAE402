@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { createReadStream, existsSync } from 'fs';
+import { createReadStream } from 'fs';
 import { resolve, extname } from 'path';
 
 // Plugin maison : sert les fichiers du dossier ./docs/ à l'URL /docs/
@@ -13,9 +13,6 @@ function serveDocsFolder() {
 
                 const relativePath = decodeURIComponent(req.url.slice(6)); // enlève '/docs/'
                 const filePath = resolve('./docs', relativePath);
-
-                if (!existsSync(filePath)) return next();
-
                 const mime = {
                     '.pdf':  'application/pdf',
                     '.png':  'image/png',
@@ -26,7 +23,10 @@ function serveDocsFolder() {
 
                 res.setHeader('Content-Type', type);
                 res.setHeader('Cache-Control', 'no-store');
-                createReadStream(filePath).pipe(res);
+
+                const stream = createReadStream(filePath);
+                stream.on('error', () => next());
+                stream.pipe(res);
             });
         }
     };

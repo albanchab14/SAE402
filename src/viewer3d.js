@@ -80,6 +80,14 @@ let onRobotPlaced   = null;
 // En WebXR : 1 unité Three.js = 1 m réel. XR_SCALE = 0.3 → bras ≈ 90 cm.
 const XR_SCALE = 0.3;
 
+// Vecteurs réutilisables (évite les allocations dans les boucles hot-path et la boucle XR)
+const _tmpVec  = new THREE.Vector3();
+const _tmpVec2 = new THREE.Vector3();
+const _tmpVec3 = new THREE.Vector3();
+
+/** Cache du résultat de isXRSupported (null = pas encore testé). */
+let _xrSupportedCache = null;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // initViewer
 // ─────────────────────────────────────────────────────────────────────────────
@@ -237,10 +245,23 @@ function _onModelLoaded(gltf) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Extrait les coordonnées hotspot d'un composant (gère les deux formats API/fallback).
+ * @param {Object} part
+ * @param {THREE.Vector3} [target] - vecteur réutilisable (évite les allocations)
+ * @returns {THREE.Vector3}
+ */
+function _hotspotCoords(part, target = _tmpVec) {
+    return target.set(
+        parseFloat(part.hotspot_x ?? part.hotspot_position?.x ?? 0),
+        parseFloat(part.hotspot_y ?? part.hotspot_position?.y ?? 0),
+        parseFloat(part.hotspot_z ?? part.hotspot_position?.z ?? 0)
+    );
+}
+
+/**
  * Convertit la coordonnée X locale dans robotGroup en nom de partie.
- * Les zones sont définies par PART_ZONES (frontières milieu entre hotspots).
  * @param {number} localX
- * @returns {Object|null} - objet part depuis partsData, ou null
+ * @returns {Object|null}
  */
 function _getPartFromLocalX(localX) {
     for (const zone of PART_ZONES) {
@@ -266,25 +287,19 @@ function _getBestTargetPart(raycaster, useTolerance = true) {
 
     for (const part of partsData) {
         if (!part.hotspot_position && part.hotspot_x === undefined) continue;
-        const hx = parseFloat(part.hotspot_x ?? part.hotspot_position?.x ?? 0);
-        const hy = parseFloat(part.hotspot_y ?? part.hotspot_position?.y ?? 0);
-        const hz = parseFloat(part.hotspot_z ?? part.hotspot_position?.z ?? 0);
-        
-        const hotspotLocal = new THREE.Vector3(hx, hy, hz);
-        const hotspotWorld = robotGroup.localToWorld(hotspotLocal);
+
+        _hotspotCoords(part, _tmpVec2);
+        const hotspotWorld = robotGroup.localToWorld(_tmpVec2);
 
         if (hitPoint) {
             const dist = hitPoint.distanceTo(hotspotWorld);
-            if (dist < minScore) {
-                minScore = dist;
-                bestPart = part;
-            }
+            if (dist < minScore) { minScore = dist; bestPart = part; }
         } else if (useTolerance) {
             const distToRay = raycaster.ray.distanceToPoint(hotspotWorld);
-            const scaledTolerance = 0.35 * robotGroup.scale.x; // Tolérance généreuse adaptée à l'échelle
-            
-            const dirToHotspot = hotspotWorld.clone().sub(raycaster.ray.origin);
-            if (dirToHotspot.dot(raycaster.ray.direction) > 0 && distToRay < scaledTolerance && distToRay < minScore) {
+            const scaledTolerance = 0.35 * robotGroup.scale.x;
+
+            _tmpVec3.subVectors(hotspotWorld, raycaster.ray.origin);
+            if (_tmpVec3.dot(raycaster.ray.direction) > 0 && distToRay < scaledTolerance && distToRay < minScore) {
                 minScore = distToRay;
                 bestPart = part;
             }
@@ -292,7 +307,7 @@ function _getBestTargetPart(raycaster, useTolerance = true) {
     }
 
     if (hitPoint && minScore > 0.4 * robotGroup.scale.x) {
-        const localPoint = robotGroup.worldToLocal(hitPoint.clone());
+        const localPoint = robotGroup.worldToLocal(_tmpVec2.copy(hitPoint));
         bestPart = _getPartFromLocalX(localPoint.x) || bestPart;
     }
 
@@ -326,11 +341,9 @@ function _selectZone(localX) {
         }
     }
 
-    // Appliquer le highlight à tous les meshes dont le centre tombe dans cette zone
     robotMeshes.forEach(mesh => {
-        const worldCenter = new THREE.Vector3();
-        mesh.getWorldPosition(worldCenter);
-        const meshLocalX = robotGroup.worldToLocal(worldCenter.clone()).x;
+        mesh.getWorldPosition(_tmpVec);
+        const meshLocalX = robotGroup.worldToLocal(_tmpVec).x;
 
         if (meshLocalX >= zoneMin && meshLocalX < zoneMax) {
             selectedMeshGroups.push({ mesh, mat: mesh.material });
@@ -365,44 +378,50 @@ function _onCanvasClick(e) {
     const part = _getBestTargetPart(raycaster, true);
     if (!part) return;
 
-    const hx = parseFloat(part.hotspot_x ?? part.hotspot_position?.x ?? 0);
-    _selectZone(hx);
+    const coords = _hotspotCoords(part, _tmpVec);
+    _selectZone(coords.x);
 
-    const hy = parseFloat(part.hotspot_y ?? part.hotspot_position?.y ?? 0);
-    const hz = parseFloat(part.hotspot_z ?? part.hotspot_position?.z ?? 0);
-    const loc = new THREE.Vector3(hx, hy, hz);
-    const screenPos = _worldToScreen(robotGroup.localToWorld(loc), camera);
-    
+    const screenPos = _worldToScreen(robotGroup.localToWorld(coords), camera);
     onHotspotClick?.(part, screenPos);
 }
 
+/** Throttle rAF pour limiter le raycasting à ~60fps max. */
+let _mouseMoveRafPending = false;
+
 function _onMouseMove(e) {
     if (!canvas || xrSession || !robotMeshes.length) return;
+    if (_mouseMoveRafPending) return;
+    _mouseMoveRafPending = true;
 
-    const rect = canvas.getBoundingClientRect();
-    mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
-    mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
+    const cx = e.clientX, cy = e.clientY;
 
-    const part = _getBestTargetPart(raycaster, true);
-    canvas.style.cursor = part ? 'pointer' : 'default';
+    requestAnimationFrame(() => {
+        _mouseMoveRafPending = false;
 
-    const tooltip = document.getElementById('hover-tooltip');
-    if (part) {
-        if (document.getElementById('info-panel')?.classList.contains('active')) {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x =  ((cx - rect.left) / rect.width)  * 2 - 1;
+        mouse.y = -((cy - rect.top)  / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+
+        const part = _getBestTargetPart(raycaster, true);
+        canvas.style.cursor = part ? 'pointer' : 'default';
+
+        const tooltip = document.getElementById('hover-tooltip');
+        if (part) {
+            if (document.getElementById('info-panel')?.classList.contains('active')) {
+                if (tooltip) tooltip.classList.remove('visible');
+                return;
+            }
+            if (tooltip) {
+                tooltip.textContent = part.name_fr || part.name;
+                tooltip.style.left = cx + 'px';
+                tooltip.style.top  = cy + 'px';
+                tooltip.classList.add('visible');
+            }
+        } else {
             if (tooltip) tooltip.classList.remove('visible');
-            return;
         }
-
-        if (tooltip) {
-            tooltip.textContent = part.name_fr || part.name;
-            tooltip.style.left = e.clientX + 'px';
-            tooltip.style.top = e.clientY + 'px';
-            tooltip.classList.add('visible');
-        }
-    } else {
-        if (tooltip) tooltip.classList.remove('visible');
-    }
+    });
 }
 
 /**
@@ -430,12 +449,7 @@ function _worldToScreen(worldPos, cam) {
 export function focusOnPart(part) {
     if (!robotGroup || !camera || !controls || xrSession) return;
 
-    // Calculer le centre monde du hotspot de la partie
-    const hx = parseFloat(part.hotspot_x ?? part.hotspot_position?.x ?? 0);
-    const hy = parseFloat(part.hotspot_y ?? part.hotspot_position?.y ?? 0);
-    const hz = parseFloat(part.hotspot_z ?? part.hotspot_position?.z ?? 0);
-    const localHotspot = new THREE.Vector3(hx, hy, hz);
-    const worldTarget  = robotGroup.localToWorld(localHotspot.clone());
+    const worldTarget = robotGroup.localToWorld(_hotspotCoords(part, _tmpVec).clone());
 
     // Direction caméra → cible, reculer pour un léger zoom
     const camDir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
@@ -551,8 +565,9 @@ export function stopViewer() {
  * @returns {Promise<boolean>}
  */
 export async function isXRSupported() {
-    if (!navigator.xr) return false;
-    return navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
+    if (_xrSupportedCache !== null) return _xrSupportedCache;
+    if (!navigator.xr) return (_xrSupportedCache = false);
+    return (_xrSupportedCache = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false));
 }
 
 /**
@@ -658,18 +673,14 @@ function _placeRobotXR() {
 function _checkXRHotspotHit() {
     if (!robotMeshes.length || !robotGroup) return;
 
-    const xrCam  = renderer.xr.getCamera();
-    raycaster.setFromCamera({ x: 0, y: 0 }, xrCam); // centre de l'écran
+    const xrCam = renderer.xr.getCamera();
+    raycaster.setFromCamera({ x: 0, y: 0 }, xrCam);
 
-    // Utilise l'aim-assist
     const part = _getBestTargetPart(raycaster, true);
     if (!part || !onHotspotClick) return;
 
-    const hx = parseFloat(part.hotspot_x ?? part.hotspot_position?.x ?? 0);
-    _selectZone(hx);
-
-    const screenPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-    onHotspotClick(part, screenPos);
+    _selectZone(_hotspotCoords(part, _tmpVec).x);
+    onHotspotClick(part, { x: window.innerWidth / 2, y: window.innerHeight / 2 });
 }
 
 // ── Boucle XR ─────────────────────────────────────────────────────────────────

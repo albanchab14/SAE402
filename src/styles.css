@@ -1239,3 +1239,10 @@ body {
         pointer-events: none;
     }
 }
+
+/* ── Utilitaires générés par JS ──────────────────────────────────── */
+.empty-state   { color: rgba(255,255,255,0.3); text-align: center; padding: 20px 0; }
+.doc-card-pdf  { cursor: pointer; }
+.doc-card-pdf .doc-icon   { color: #3b82f6; }
+.doc-card-pdf .doc-open-hint { font-size: 14px; color: rgba(255,255,255,0.3); margin-left: auto; }
+.doc-card-pdf .doc-content { color: rgba(255,255,255,0.45); font-size: 12px; }
