@@ -1,6 +1,103 @@
 {
   "categories": [
     {
+      "id": "fiches_composants",
+      "label": "Fiches par composant",
+      "icon": "🔩",
+      "docs": [
+        {
+          "id": "fiche_base_joint1",
+          "title": "Base (Joint 1)",
+          "subtitle": "Articulation de base — Installation",
+          "file": "/docs/fiche_base_joint1.pdf",
+          "pages": "1",
+          "lang": "FR",
+          "size": "~5 KB"
+        },
+        {
+          "id": "fiche_epaule_joint2",
+          "title": "Épaule (Joint 2)",
+          "subtitle": "Shoulder — Identification",
+          "file": "/docs/fiche_epaule_joint2.pdf",
+          "pages": "1",
+          "lang": "FR",
+          "size": "~5 KB"
+        },
+        {
+          "id": "fiche_bras_superieur",
+          "title": "Bras supérieur",
+          "subtitle": "Upper Arm — Identification",
+          "file": "/docs/fiche_bras_superieur.pdf",
+          "pages": "1",
+          "lang": "FR",
+          "size": "~5 KB"
+        },
+        {
+          "id": "fiche_coude_joint3",
+          "title": "Coude (Joint 3)",
+          "subtitle": "Elbow — Identification",
+          "file": "/docs/fiche_coude_joint3.pdf",
+          "pages": "1",
+          "lang": "FR",
+          "size": "~5 KB"
+        },
+        {
+          "id": "fiche_avant_bras",
+          "title": "Avant-bras",
+          "subtitle": "Forearm — Identification",
+          "file": "/docs/fiche_avant_bras.pdf",
+          "pages": "1",
+          "lang": "FR",
+          "size": "~5 KB"
+        },
+        {
+          "id": "fiche_poignet1_joint4",
+          "title": "Poignet 1 (Joint 4)",
+          "subtitle": "Wrist 1 — Réf. 124100",
+          "file": "/docs/fiche_poignet1_joint4.pdf",
+          "pages": "1",
+          "lang": "FR",
+          "size": "~5 KB"
+        },
+        {
+          "id": "fiche_poignet2_joint5",
+          "title": "Poignet 2 (Joint 5)",
+          "subtitle": "Wrist 2 — Réf. 124101",
+          "file": "/docs/fiche_poignet2_joint5.pdf",
+          "pages": "1",
+          "lang": "FR",
+          "size": "~5 KB"
+        },
+        {
+          "id": "fiche_poignet3_bride_joint6",
+          "title": "Poignet 3 + Bride (Joint 6)",
+          "subtitle": "Wrist 3 + Tool Flange — Réf. 102414",
+          "file": "/docs/fiche_poignet3_bride_joint6.pdf",
+          "pages": "1",
+          "lang": "FR",
+          "size": "~5 KB"
+        },
+        {
+          "id": "fiche_boitier_commande",
+          "title": "Boîtier de commande",
+          "subtitle": "Control Box CB-2 — Alimentation",
+          "file": "/docs/fiche_boitier_commande.pdf",
+          "pages": "1",
+          "lang": "FR",
+          "size": "~5 KB"
+        },
+        {
+          "id": "fiche_teach_pendant",
+          "title": "Teach Pendant (TP5)",
+          "subtitle": "Interface opérateur — Identification",
+          "file": "/docs/fiche_teach_pendant.pdf",
+          "pages": "1",
+          "lang": "FR",
+          "size": "~5 KB"
+        }
+      ]
+    },
+    {
       "id": "user_manual",
       "label": "Manuel utilisateur",
       "icon": "📖",
