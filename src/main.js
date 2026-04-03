@@ -610,7 +610,6 @@ function setupSideMenu(parts) {
     const menu      = document.getElementById('side-menu');
     const backdrop  = document.getElementById('menu-backdrop');
     const toggleBtn = document.getElementById('menu-toggle');
-    const closeBtn  = menu.querySelector('.menu-close');
 
     function openMenu()  {
         menu.classList.add('open');
@@ -627,7 +626,6 @@ function setupSideMenu(parts) {
     _closeMenuRef = closeMenu;
 
     toggleBtn.addEventListener('click', () => menu.classList.contains('open') ? closeMenu() : openMenu());
-    closeBtn.addEventListener('click',  closeMenu);
     backdrop.addEventListener('click',  closeMenu);
 
     // Accordéon : une seule section ouverte à la fois
@@ -668,7 +666,9 @@ function _buildPdfLibrary() {
         totalDocs += cat.docs.length;
         const items = cat.docs.map(doc => `
             <div class="pdf-item" data-file="${doc.file}" data-title="${doc.title}" data-subtitle="${doc.subtitle} — ${doc.pages} pages — ${doc.size}">
-                <div class="pdf-item-icon">📄</div>
+                <div class="pdf-item-icon">
+                    <span class="material-icons-outlined" style="font-size: 18px;">description</span>
+                </div>
                 <div class="pdf-item-info">
                     <div class="pdf-item-title">${doc.title}</div>
                     <div class="pdf-item-meta">${doc.pages} pages · ${doc.size} · ${doc.lang}</div>

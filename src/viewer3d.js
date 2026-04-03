@@ -13,23 +13,24 @@
  */
 
 import * as THREE from 'three';
-import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // ─── Variables module ─────────────────────────────────────────────────────────
 
 let renderer, scene, camera, controls, animFrameId;
 let raycaster, mouse;
-let robotModel     = null;
-let robotGroup     = null;   // Groupe parent : robot, bras à la verticale
-let robotMeshes    = [];     // Tous les meshes du GLB (pour le raycasting)
-let gridHelper     = null;
-let floorMeshRef   = null;
-let partsData      = [];
-let canvas         = null;
-let isInitialized  = false;
+let robotModel = null;
+let robotGroup = null;   // Groupe parent : robot, bras à la verticale
+let robotMeshes = [];     // Tous les meshes du GLB (pour le raycasting)
+let gridHelper = null;
+let floorMeshRef = null;
+let partsData = [];
+let canvas = null;
+let isInitialized = false;
 let onHotspotClick = null;   // Callback(part, screenPos) déclenché au clic
-let cameraAnim     = null;   // animation caméra en cours
+let cameraAnim = null;   // animation caméra en cours
 
 // ─── Sélection / highlight ────────────────────────────────────────────────────
 
@@ -38,13 +39,13 @@ let selectedMeshGroups = [];
 
 // Matériau de highlight partagé (violet / indigo)
 const HIGHLIGHT_MAT = new THREE.MeshStandardMaterial({
-    color      : 0x6366f1,
-    emissive   : 0x6366f1,
+    color: 0x6366f1,
+    emissive: 0x6366f1,
     emissiveIntensity: 0.55,
-    roughness  : 0.3,
-    metalness  : 0.15,
+    roughness: 0.3,
+    metalness: 0.15,
     transparent: true,
-    opacity    : 0.95,
+    opacity: 0.95,
 });
 
 // ─── Zones de la pièce le long de l'axe X local du robotGroup ────────────────
@@ -57,31 +58,31 @@ const HIGHLIGHT_MAT = new THREE.MeshStandardMaterial({
 // Les frontières de zone sont les milieux entre deux hotspots consécutifs.
 //
 const PART_ZONES = [
-    { partName: 'Joint1_Base',               xMax: -2.00 },
-    { partName: 'Joint2_Shoulder',           xMax: -1.69 },
-    { partName: 'UpperArm_Segment',          xMax: -1.205 },
-    { partName: 'Joint3_Elbow',              xMax: -0.63 },
-    { partName: 'ForeArm_Segment',           xMax: -0.085 },
-    { partName: 'Joint4_Wrist1',             xMax:  0.22 },
-    { partName: 'Joint5_Wrist2',             xMax:  0.39 },
-    { partName: 'Joint6_Wrist3_ToolFlange',  xMax:  Infinity },
+    { partName: 'Joint1_Base', xMax: -2.00 },
+    { partName: 'Joint2_Shoulder', xMax: -1.69 },
+    { partName: 'UpperArm_Segment', xMax: -1.205 },
+    { partName: 'Joint3_Elbow', xMax: -0.63 },
+    { partName: 'ForeArm_Segment', xMax: -0.085 },
+    { partName: 'Joint4_Wrist1', xMax: 0.22 },
+    { partName: 'Joint5_Wrist2', xMax: 0.39 },
+    { partName: 'Joint6_Wrist3_ToolFlange', xMax: Infinity },
 ];
 
 // ─── Variables WebXR ──────────────────────────────────────────────────────────
 
-let xrSession       = null;
+let xrSession = null;
 let xrHitTestSource = null;
-let xrRefSpace      = null;
-let xrReticle       = null;
-let xrController    = null;
-let xrRobotPlaced   = false;
-let onRobotPlaced   = null;
+let xrRefSpace = null;
+let xrReticle = null;
+let xrController = null;
+let xrRobotPlaced = false;
+let onRobotPlaced = null;
 
 // En WebXR : 1 unité Three.js = 1 m réel. XR_SCALE = 0.3 → bras ≈ 90 cm.
 const XR_SCALE = 0.3;
 
 // Vecteurs réutilisables (évite les allocations dans les boucles hot-path et la boucle XR)
-const _tmpVec  = new THREE.Vector3();
+const _tmpVec = new THREE.Vector3();
 const _tmpVec2 = new THREE.Vector3();
 const _tmpVec3 = new THREE.Vector3();
 
@@ -100,9 +101,9 @@ let _xrSupportedCache = null;
  */
 export function initViewer(canvasEl, parts = [], clickCb = null) {
     if (isInitialized) return;
-    isInitialized  = true;
-    canvas         = canvasEl;
-    partsData      = parts;
+    isInitialized = true;
+    canvas = canvasEl;
+    partsData = parts;
     onHotspotClick = clickCb;
 
     // ── Renderer ──────────────────────────────────────────────────────────────
@@ -111,13 +112,13 @@ export function initViewer(canvasEl, parts = [], clickCb = null) {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     // Fond bleu nuit très profond
     renderer.setClearColor(0x060b14, 1);
     renderer.xr.enabled = false;
 
     // ── Scène ─────────────────────────────────────────────────────────────────
-    scene     = new THREE.Scene();
+    scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x060b14, 0.025);
 
     // ── Caméra ────────────────────────────────────────────────────────────────
@@ -134,8 +135,8 @@ export function initViewer(canvasEl, parts = [], clickCb = null) {
     dir.castShadow = true;
     dir.shadow.mapSize.set(2048, 2048);
     dir.shadow.camera.near = 0.5; dir.shadow.camera.far = 30;
-    dir.shadow.camera.left = -5;  dir.shadow.camera.right = 5;
-    dir.shadow.camera.top  =  5;  dir.shadow.camera.bottom = -5;
+    dir.shadow.camera.left = -5; dir.shadow.camera.right = 5;
+    dir.shadow.camera.top = 5; dir.shadow.camera.bottom = -5;
     scene.add(dir);
 
     // Lumière de contre (back/rim) : bleu électrique pour le contour du robot
@@ -164,39 +165,41 @@ export function initViewer(canvasEl, parts = [], clickCb = null) {
         new THREE.PlaneGeometry(12, 12),
         new THREE.ShadowMaterial({ opacity: 0.2 })
     );
-    floorMeshRef.rotation.x   = -Math.PI / 2;
-    floorMeshRef.position.y   = -2;
+    floorMeshRef.rotation.x = -Math.PI / 2;
+    floorMeshRef.position.y = -2;
     floorMeshRef.receiveShadow = true;
     scene.add(floorMeshRef);
 
     // ── Chargement GLB ────────────────────────────────────────────────────────
-    new GLTFLoader().load(
+    const loader = new GLTFLoader();
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    loader.load(
         '/models/UR5e.glb',
         gltf => _onModelLoaded(gltf),
         null,
-        err  => console.error('[Viewer] Erreur chargement GLB :', err)
+        err => console.error('[Viewer] Erreur chargement GLB :', err)
     );
 
     // ── OrbitControls ─────────────────────────────────────────────────────────
     controls = new OrbitControls(camera, canvas);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.rotateSpeed   = 0.5;
-    controls.zoomSpeed     = 1.2;
-    controls.panSpeed      = 0.7;
-    controls.minDistance   = 1.5;
-    controls.maxDistance   = 14;
+    controls.rotateSpeed = 0.5;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.7;
+    controls.minDistance = 1.5;
+    controls.maxDistance = 14;
     controls.maxPolarAngle = Math.PI * 0.88;
     controls.target.set(0, 1.3, 0);
     controls.update();
 
     // ── Raycaster ─────────────────────────────────────────────────────────────
     raycaster = new THREE.Raycaster();
-    mouse     = new THREE.Vector2();
+    mouse = new THREE.Vector2();
 
-    canvas.addEventListener('click',     _onCanvasClick);
+    canvas.addEventListener('click', _onCanvasClick);
     canvas.addEventListener('mousemove', _onMouseMove);
-    window.addEventListener('resize',    _onResize);
+    window.addEventListener('resize', _onResize);
 
     _animate();
 }
@@ -209,9 +212,9 @@ function _onModelLoaded(gltf) {
     robotModel = gltf.scene;
 
     // Centrer + mettre à l'échelle
-    const box    = new THREE.Box3().setFromObject(robotModel);
+    const box = new THREE.Box3().setFromObject(robotModel);
     const center = box.getCenter(new THREE.Vector3());
-    const size   = box.getSize(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
     robotModel.position.sub(center);
 
     const scale = 3.0 / Math.max(size.x, size.y, size.z);
@@ -221,7 +224,7 @@ function _onModelLoaded(gltf) {
     robotMeshes = [];
     robotModel.traverse(child => {
         if (child.isMesh) {
-            child.castShadow    = true;
+            child.castShadow = true;
             child.receiveShadow = true;
             robotMeshes.push(child);
         }
@@ -371,8 +374,8 @@ function _onCanvasClick(e) {
     if (tooltip) tooltip.classList.remove('visible');
 
     const rect = canvas.getBoundingClientRect();
-    mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
-    mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
     const part = _getBestTargetPart(raycaster, true);
@@ -399,8 +402,8 @@ function _onMouseMove(e) {
         _mouseMoveRafPending = false;
 
         const rect = canvas.getBoundingClientRect();
-        mouse.x =  ((cx - rect.left) / rect.width)  * 2 - 1;
-        mouse.y = -((cy - rect.top)  / rect.height) * 2 + 1;
+        mouse.x = ((cx - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((cy - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
 
         const part = _getBestTargetPart(raycaster, true);
@@ -415,7 +418,7 @@ function _onMouseMove(e) {
             if (tooltip) {
                 tooltip.textContent = part.name_fr || part.name;
                 tooltip.style.left = cx + 'px';
-                tooltip.style.top  = cy + 'px';
+                tooltip.style.top = cy + 'px';
                 tooltip.classList.add('visible');
             }
         } else {
@@ -433,7 +436,7 @@ function _onMouseMove(e) {
 function _worldToScreen(worldPos, cam) {
     const ndc = worldPos.clone().project(cam);
     return {
-        x: ( ndc.x * 0.5 + 0.5) * window.innerWidth,
+        x: (ndc.x * 0.5 + 0.5) * window.innerWidth,
         y: (-ndc.y * 0.5 + 0.5) * window.innerHeight
     };
 }
@@ -460,10 +463,10 @@ export function focusOnPart(part) {
     newCamPos.y = Math.max(newCamPos.y, worldTarget.y * 0.3 + 0.5);
 
     // Lancer l'animation smooth
-    const startPos    = camera.position.clone();
+    const startPos = camera.position.clone();
     const startTarget = controls.target.clone();
-    const duration    = 800; // ms
-    const startTime   = performance.now();
+    const duration = 800; // ms
+    const startTime = performance.now();
 
     // Annuler toute animation précédente
     if (cameraAnim) cameraAnim.cancelled = true;
@@ -536,15 +539,15 @@ export function updateHotspots(parts) {
 export function setViewerMode(transparent) {
     if (!renderer) return;
     renderer.setClearColor(0x060b14, transparent ? 0 : 1);
-    if (gridHelper)   gridHelper.visible   = !transparent;
+    if (gridHelper) gridHelper.visible = !transparent;
     if (floorMeshRef) floorMeshRef.visible = !transparent;
-    if (scene)        scene.fog = transparent ? null : new THREE.FogExp2(0x060b14, 0.025);
+    if (scene) scene.fog = transparent ? null : new THREE.FogExp2(0x060b14, 0.025);
 }
 
 /** Stoppe et nettoie le viewer. */
 export function stopViewer() {
     if (animFrameId) cancelAnimationFrame(animFrameId);
-    canvas?.removeEventListener('click',     _onCanvasClick);
+    canvas?.removeEventListener('click', _onCanvasClick);
     canvas?.removeEventListener('mousemove', _onMouseMove);
     window.removeEventListener('resize', _onResize);
     selectedMeshGroups = [];
@@ -591,7 +594,7 @@ export async function startXRSession(placedCb = null) {
     await renderer.xr.setSession(session);
 
     xrRefSpace = await session.requestReferenceSpace('local');
-    const vwrSpace  = await session.requestReferenceSpace('viewer');
+    const vwrSpace = await session.requestReferenceSpace('viewer');
     xrHitTestSource = await session.requestHitTestSource({ space: vwrSpace });
 
     _createXRReticle();
@@ -600,11 +603,11 @@ export async function startXRSession(placedCb = null) {
     xrController.addEventListener('select', _onXRTap);
     scene.add(xrController);
 
-    if (robotGroup)   robotGroup.visible   = false;
-    if (gridHelper)   gridHelper.visible   = false;
+    if (robotGroup) robotGroup.visible = false;
+    if (gridHelper) gridHelper.visible = false;
     if (floorMeshRef) floorMeshRef.visible = false;
-    if (scene)        scene.fog            = null;
-    if (controls)     controls.enabled     = false;
+    if (scene) scene.fog = null;
+    if (controls) controls.enabled = false;
 
     xrRobotPlaced = false;
     clearMeshSelection();
@@ -658,8 +661,8 @@ function _placeRobotXR() {
     robotGroup.rotation.set(0, 0, Math.PI / 2);
     robotGroup.position.set(surfacePos.x, surfacePos.y + 1.5 * XR_SCALE, surfacePos.z);
     robotGroup.visible = true;
-    xrReticle.visible  = false;
-    xrRobotPlaced      = true;
+    xrReticle.visible = false;
+    xrRobotPlaced = true;
 
     const crosshair = document.getElementById('ar-crosshair');
     if (crosshair) crosshair.style.display = 'block';
@@ -688,7 +691,7 @@ function _checkXRHotspotHit() {
 function _checkXRHoveredPart() {
     if (!robotMeshes.length || !robotGroup) return;
 
-    const xrCam  = renderer.xr.getCamera();
+    const xrCam = renderer.xr.getCamera();
     raycaster.setFromCamera({ x: 0, y: 0 }, xrCam);
 
     const part = _getBestTargetPart(raycaster, true);
@@ -744,7 +747,7 @@ function _onXRSessionEnd() {
 
     xrHitTestSource?.cancel?.();
     xrHitTestSource = null;
-    if (xrReticle)    { scene.remove(xrReticle);    xrReticle    = null; }
+    if (xrReticle) { scene.remove(xrReticle); xrReticle = null; }
     if (xrController) { scene.remove(xrController); xrController = null; }
 
     clearMeshSelection();
@@ -756,18 +759,18 @@ function _onXRSessionEnd() {
         robotGroup.rotation.set(0, 0, Math.PI / 2);
     }
 
-    if (gridHelper)   gridHelper.visible   = true;
+    if (gridHelper) gridHelper.visible = true;
     if (floorMeshRef) floorMeshRef.visible = true;
-    if (scene)        scene.fog = new THREE.FogExp2(0x0a0a0a, 0.03);
-    if (controls)     controls.enabled     = true;
+    if (scene) scene.fog = new THREE.FogExp2(0x0a0a0a, 0.03);
+    if (controls) controls.enabled = true;
 
     const crosshair = document.getElementById('ar-crosshair');
     if (crosshair) crosshair.style.display = 'none';
-    
+
     const labelEl = document.getElementById('ar-part-label');
     if (labelEl) labelEl.classList.remove('visible');
 
-    xrSession     = null;
+    xrSession = null;
     xrRobotPlaced = false;
 
     _animate();
