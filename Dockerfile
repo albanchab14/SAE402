@@ -18,7 +18,7 @@ COPY index.html vite.config.js ./
 COPY src/ src/
 COPY public/ public/
 ENV NODE_ENV=production
-RUN npm run build
+RUN set -e && npx vite build 2>&1
 
 
 # --- Stage 2 : Image de production ---
