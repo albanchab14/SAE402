@@ -6,6 +6,16 @@
 npm install
 ```
 
+## Base de données
+
+Ce projet nécessite une base de données pour fonctionner en mode "En ligne" :
+
+1. **Installer XAMPP**
+2. **Démarrer le service MySQL** via le panneau de contrôle XAMPP.
+3. **Créer une base de données** (ex: `mara_db`).
+4. **Importer le schéma** : Importez le fichier `api/db_setup.sql` situé dans le dossier `api/`.
+5. **Configuration** : Copiez `api/config.php.example` vers `api/config.php` et renseignez vos identifiants SQL.
+
 ## Développement
 
 Lancez les deux commandes suivantes dans des terminaux séparés :
